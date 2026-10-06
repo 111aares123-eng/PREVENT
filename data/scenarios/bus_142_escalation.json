@@ -1,0 +1,88 @@
+{
+  "asset": {
+    "asset_id": "BUS-142",
+    "asset_type": "bus",
+    "make_model": "New Flyer Xcelsior 40",
+    "depot_location": "North District Depot",
+    "criticality": "high",
+    "status": "active"
+  },
+  "events": [
+    {
+      "asset_id": "BUS-142",
+      "timestamp": "2026-09-01T08:30:00Z",
+      "event_type": "maintenance",
+      "subsystem": "braking",
+      "severity": 2,
+      "description": "Routine 45-day depot inspection: front brake friction pads measured at 3.5mm wear threshold. Service scheduled within 30 days.",
+      "source": "Depot Workshop Log",
+      "reporter_role": "technician",
+      "location": "North Depot Bay 4",
+      "raw_metadata": {
+        "odometer": 142850,
+        "pad_thickness_mm": 3.5
+      }
+    },
+    {
+      "asset_id": "BUS-142",
+      "timestamp": "2026-09-05T17:15:00Z",
+      "event_type": "complaint",
+      "subsystem": "braking",
+      "severity": 3,
+      "description": "Passenger complaint received via TransitApp: Bus #142 experienced unusually long stopping distance and abrupt jerky deceleration approaching 5th Ave intersection during evening peak load.",
+      "source": "Passenger Feedback App",
+      "reporter_role": "passenger",
+      "location": "Route 4 - 5th Ave & Pine",
+      "raw_metadata": {
+        "trip_id": "R4-108",
+        "passenger_load": "heavy"
+      }
+    },
+    {
+      "asset_id": "BUS-142",
+      "timestamp": "2026-09-09T11:00:00Z",
+      "event_type": "inspection",
+      "subsystem": "braking",
+      "severity": 3,
+      "description": "State transit authority spot safety audit: brake caliper air line imbalance noted; differential pressure exceeded 12% between left and right axles.",
+      "source": "State Transit Safety Inspector",
+      "reporter_role": "inspector",
+      "location": "Terminal Station Staging",
+      "raw_metadata": {
+        "audit_code": "DOT-SA-2026-902",
+        "differential_pressure_pct": 12.4
+      }
+    },
+    {
+      "asset_id": "BUS-142",
+      "timestamp": "2026-09-14T07:45:00Z",
+      "event_type": "operational_report",
+      "subsystem": "braking",
+      "severity": 4,
+      "description": "Morning shift driver report: abnormal brake pedal travel and resistance. Required heavy pedal depression to hold at traffic stop on 8% gradient.",
+      "source": "Driver Shift Incident Pad",
+      "reporter_role": "driver",
+      "location": "Route 4 - Highland Corridor",
+      "raw_metadata": {
+        "driver_id": "DRV-8821",
+        "weather": "light_rain"
+      }
+    },
+    {
+      "asset_id": "BUS-142",
+      "timestamp": "2026-09-17T16:20:00Z",
+      "event_type": "near_miss",
+      "subsystem": "braking",
+      "severity": 5,
+      "description": "Near-miss safety incident: vehicle failed to stop within normal stopping distance at wet pedestrian crosswalk. Vehicle overshot stop bar by 2.8 meters; driver applied emergency parking brake to avoid crossing pedestrian.",
+      "source": "Telematics & Safety Dispatch",
+      "reporter_role": "safety_officer",
+      "location": "Route 4 - Broadway Crossing",
+      "raw_metadata": {
+        "overshoot_meters": 2.8,
+        "speed_at_braking_kmh": 38.0,
+        "telematics_decel_g": 0.28
+      }
+    }
+  ]
+}
