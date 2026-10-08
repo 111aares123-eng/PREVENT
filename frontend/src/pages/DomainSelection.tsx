@@ -580,24 +580,13 @@ export const DomainSelection: React.FC = () => {
                 Transportation is PREVENT's active live demo domain.
               </span>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <button
                   type="button"
                   onClick={() => setSelectedSpec(null)}
-                  className="px-3 py-1.5 rounded border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors font-medium w-full sm:w-auto cursor-pointer"
+                  className="px-3.5 py-1.5 rounded border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors font-medium w-full sm:w-auto cursor-pointer"
                 >
                   Close
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSpec(null);
-                    navigate('/app/transportation');
-                  }}
-                  className="px-3.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white font-medium flex items-center justify-center gap-1.5 w-full sm:w-auto transition-colors shadow-xs cursor-pointer"
-                >
-                  <span>Enter Dashboard →</span>
                 </button>
               </div>
             </div>
