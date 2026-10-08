@@ -10,6 +10,7 @@ interface AssetHeaderProps {
   trend: TrendDirection;
   primarySubsystem: string;
   confidence: number;
+  stage?: number;
 }
 
 export const AssetHeader: React.FC<AssetHeaderProps> = ({
@@ -19,9 +20,43 @@ export const AssetHeader: React.FC<AssetHeaderProps> = ({
   trend,
   primarySubsystem,
   confidence,
+  stage = 5,
 }) => {
   const isHigh = riskLevel === 'HIGH' || riskLevel === 'CRITICAL';
   const isMedium = riskLevel === 'MEDIUM';
+
+  // Smooth count-up when stage reaches 3 (RISK)
+  const [displayScore, setDisplayScore] = React.useState<number>(() =>
+    stage >= 5 ? Math.round(riskScore) : 0
+  );
+
+  React.useEffect(() => {
+    if (stage >= 5) {
+      setDisplayScore(Math.round(riskScore));
+      return;
+    }
+    if (stage >= 3) {
+      let startTime: number | null = null;
+      const target = Math.round(riskScore);
+      const duration = 350;
+      let frameId: number;
+
+      const animate = (time: number) => {
+        if (!startTime) startTime = time;
+        const progress = Math.min((time - startTime) / duration, 1);
+        const current = Math.round(progress * target);
+        setDisplayScore(current);
+        if (progress < 1) {
+          frameId = requestAnimationFrame(animate);
+        } else {
+          setDisplayScore(target);
+        }
+      };
+
+      frameId = requestAnimationFrame(animate);
+      return () => cancelAnimationFrame(frameId);
+    }
+  }, [stage, riskScore]);
 
   const riskColor = isHigh
     ? 'text-rose-600'
@@ -66,8 +101,12 @@ export const AssetHeader: React.FC<AssetHeaderProps> = ({
               Risk Score
             </span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className={`text-4xl font-extrabold ${riskColor}`}>
-                {Math.round(riskScore)}
+              <span
+                className={`text-4xl font-extrabold ${riskColor} transition-all duration-300 ${
+                  stage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-30 translate-y-1'
+                }`}
+              >
+                {displayScore}
               </span>
               <span className="text-xs text-slate-500 font-sans">/ 100</span>
             </div>
@@ -77,7 +116,11 @@ export const AssetHeader: React.FC<AssetHeaderProps> = ({
             <span className="block text-[10px] uppercase font-sans tracking-wider text-slate-500 font-semibold">
               Assessment
             </span>
-            <div className="mt-0.5">
+            <div
+              className={`mt-0.5 transition-all duration-300 ${
+                stage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-30 translate-y-1'
+              }`}
+            >
               <span className={`text-sm font-bold tracking-tight block ${riskColor}`}>
                 {riskLevel} RISK
               </span>

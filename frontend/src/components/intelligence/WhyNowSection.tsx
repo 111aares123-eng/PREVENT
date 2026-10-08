@@ -6,12 +6,14 @@ interface WhyNowSectionProps {
   whyNow: WhyNowResponse;
   onSelectEventIds?: (eventIds: string[]) => void;
   activeEventIds?: string[];
+  stage?: number;
 }
 
 export const WhyNowSection: React.FC<WhyNowSectionProps> = ({
   whyNow,
   onSelectEventIds,
-  activeEventIds = []
+  activeEventIds = [],
+  stage = 5,
 }) => {
   return (
     <section className="bg-white rounded-lg border border-slate-200 p-6 space-y-6">
@@ -21,24 +23,42 @@ export const WhyNowSection: React.FC<WhyNowSectionProps> = ({
           <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-900">
             WHY NOW?
           </h2>
-          <span className="text-[11px] font-mono text-slate-500">
+          <span
+            className={`text-[11px] font-mono transition-all duration-300 ${
+              stage >= 2
+                ? 'text-slate-800 font-semibold px-2 py-0.5 rounded bg-slate-100 border border-slate-200'
+                : 'text-slate-400'
+            }`}
+          >
             Pattern Convergence Intelligence
           </span>
         </div>
 
-        <p className="text-base sm:text-lg font-semibold text-slate-900 mt-2 leading-snug">
-          {whyNow.headline}
-        </p>
-        <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-3xl">
-          {whyNow.summary}
-        </p>
+        <div
+          style={{
+            transition: stage < 5 ? 'opacity 350ms ease, transform 350ms ease' : undefined,
+            opacity: stage >= 4 ? 1 : 0.25,
+            transform: stage >= 4 ? 'translateY(0)' : 'translateY(4px)',
+          }}
+        >
+          <p className="text-base sm:text-lg font-semibold text-slate-900 mt-2 leading-snug">
+            {whyNow.headline}
+          </p>
+          <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-3xl">
+            {whyNow.summary}
+          </p>
+        </div>
       </div>
 
       {/* Main Grid: Left Evidence List vs Right Risk Contribution */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Numbered Evidence Signals List (Thin Dividers, NOT separate cards) */}
         <div className="lg:col-span-7 space-y-1">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-semibold mb-2">
+          <div
+            className={`text-[10px] font-mono uppercase tracking-wider font-semibold mb-2 transition-colors duration-300 ${
+              stage >= 2 ? 'text-slate-800' : 'text-slate-400'
+            }`}
+          >
             Convergent Evidence Pattern ({whyNow.signals.length} Signals)
           </div>
 
@@ -57,6 +77,12 @@ export const WhyNowSection: React.FC<WhyNowSectionProps> = ({
                     if (onSelectEventIds && signal.evidence_event_ids.length > 0) {
                       onSelectEventIds(signal.evidence_event_ids);
                     }
+                  }}
+                  style={{
+                    transition: stage < 5 ? 'opacity 300ms ease, transform 300ms ease' : undefined,
+                    transitionDelay: stage < 5 ? `${idx * 80}ms` : '0ms',
+                    opacity: stage >= 1 ? 1 : 0.25,
+                    transform: stage >= 1 ? 'translateY(0)' : 'translateY(4px)',
                   }}
                   className={`py-3 px-2 flex items-baseline justify-between gap-4 cursor-pointer transition-colors group ${
                     isSelected ? 'bg-amber-50/80 -mx-2 px-4 rounded' : 'hover:bg-slate-50/80'

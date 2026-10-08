@@ -39,6 +39,42 @@ export const AssetDetail: React.FC = () => {
   const [isFieldActionModalOpen, setIsFieldActionModalOpen] = useState(false);
   const [activeFieldContext, setActiveFieldContext] = useState<FieldActionOutcomePayload | null>(null);
 
+  // Progressive Enhancement: 5-Stage Intelligence Flow Animation
+  const isReducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const [animStage, setAnimStage] = useState<number>(isReducedMotion ? 5 : 0);
+  const animatedAssetsRef = React.useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!dossier || !assetId) return;
+
+    if (isReducedMotion || animatedAssetsRef.current.has(assetId)) {
+      setAnimStage(5);
+      return;
+    }
+
+    animatedAssetsRef.current.add(assetId);
+
+    // Sequence: 1 (Signals: 100ms) -> 2 (Correlate: 550ms) -> 3 (Risk: 950ms) -> 4 (Why Now: 1350ms) -> 5 (Action: 1750ms)
+    setAnimStage(0);
+    const t1 = setTimeout(() => setAnimStage(1), 100);
+    const t2 = setTimeout(() => setAnimStage(2), 550);
+    const t3 = setTimeout(() => setAnimStage(3), 950);
+    const t4 = setTimeout(() => setAnimStage(4), 1350);
+    const t5 = setTimeout(() => setAnimStage(5), 1750);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+      clearTimeout(t5);
+    };
+  }, [dossier?.asset.asset_id, isReducedMotion]);
+
   const handleReportOutcome = (payload: FieldActionOutcomePayload) => {
     // Phase 5 Step 2: Handoff outcome payload directly into existing AddSafetyReportModal
     setActiveFieldContext(payload);
@@ -186,6 +222,62 @@ export const AssetDetail: React.FC = () => {
         {/* Complete Dossier Content */}
         {dossier && (
           <>
+            {/* Intelligence Sequence Flow Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-4 py-2 rounded-lg bg-white border border-slate-200 shadow-2xs font-mono text-xs">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                    animStage >= 5 ? 'bg-emerald-500' : 'bg-slate-900'
+                  }`}
+                />
+                <span className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                  Intelligence Flow
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+                <span
+                  className={`transition-colors duration-200 ${
+                    animStage >= 1 ? 'text-slate-900 font-bold' : 'text-slate-400'
+                  }`}
+                >
+                  01 · SIGNALS
+                </span>
+                <span className="text-slate-300">→</span>
+                <span
+                  className={`transition-colors duration-200 ${
+                    animStage >= 2 ? 'text-slate-900 font-bold' : 'text-slate-400'
+                  }`}
+                >
+                  02 · CORRELATE
+                </span>
+                <span className="text-slate-300">→</span>
+                <span
+                  className={`transition-colors duration-200 ${
+                    animStage >= 3 ? 'text-rose-600 font-bold' : 'text-slate-400'
+                  }`}
+                >
+                  03 · RISK
+                </span>
+                <span className="text-slate-300">→</span>
+                <span
+                  className={`transition-colors duration-200 ${
+                    animStage >= 4 ? 'text-slate-900 font-bold' : 'text-slate-400'
+                  }`}
+                >
+                  04 · WHY NOW
+                </span>
+                <span className="text-slate-300">→</span>
+                <span
+                  className={`transition-colors duration-200 ${
+                    animStage >= 5 ? 'text-emerald-700 font-bold' : 'text-slate-400'
+                  }`}
+                >
+                  05 · ACTION
+                </span>
+              </div>
+            </div>
+
             {/* 1. Asset Header & Integrated Risk Strip */}
             <AssetHeader
               asset={dossier.asset}
@@ -194,6 +286,7 @@ export const AssetDetail: React.FC = () => {
               trend={dossier.trend}
               primarySubsystem={dossier.primary_subsystem}
               confidence={dossier.confidence}
+              stage={animStage}
             />
 
             {/* 2. WHY NOW? Intelligence Section (Editorial) */}
@@ -202,18 +295,27 @@ export const AssetDetail: React.FC = () => {
                 whyNow={(whyNow || dossier.why_now)!}
                 onSelectEventIds={handleSelectSignalEventIds}
                 activeEventIds={highlightedEventIds}
+                stage={animStage}
               />
             )}
 
             {/* 3. Prescriptive Recommended Action Banner */}
-            <RecommendedActionCard
-              recommendedAction={dossier.recommended_action}
-              riskLevel={dossier.risk_level}
-              primarySubsystem={dossier.primary_subsystem}
-              assetId={dossier.asset.asset_id}
-              whyNowSummary={(whyNow || dossier.why_now)?.summary}
-              onExecuteProtocol={() => setIsFieldActionModalOpen(true)}
-            />
+            <div
+              style={{
+                transition: animStage < 5 ? 'opacity 350ms ease, transform 350ms ease' : undefined,
+                opacity: animStage >= 5 ? 1 : 0.25,
+                transform: animStage >= 5 ? 'translateY(0)' : 'translateY(4px)',
+              }}
+            >
+              <RecommendedActionCard
+                recommendedAction={dossier.recommended_action}
+                riskLevel={dossier.risk_level}
+                primarySubsystem={dossier.primary_subsystem}
+                assetId={dossier.asset.asset_id}
+                whyNowSummary={(whyNow || dossier.why_now)?.summary}
+                onExecuteProtocol={() => setIsFieldActionModalOpen(true)}
+              />
+            </div>
 
             {/* 4. Risk Trajectory Chart */}
             {(riskHistory || dossier.risk_history) && (
