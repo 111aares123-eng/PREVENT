@@ -90,8 +90,28 @@ class RiskScoringWeights(BaseModel):
         description="Fraction of secondary subsystem risk scores added to total"
     )
     
-    # Risk level classification thresholds (calibrated 0-100 scale: 0-44 LOW, 45-69 MEDIUM, 70-89 HIGH, 90-100 CRITICAL)
-    threshold_low_max: float = Field(default=44.9, description="Max score for LOW risk")
+    # Isolated severe event decay parameters
+    isolated_decay_grace_period_days: float = Field(
+        default=0.5,
+        description="Grace period in days (12 hours) before an isolated severe event begins decaying"
+    )
+    isolated_decay_half_life_days: float = Field(
+        default=1.5,
+        description="Half-life in days for smooth decay of an isolated acute event without corroborating evidence"
+    )
+
+    # Mitigation discount parameters (hazard repair & verification)
+    repair_mitigation_discount: float = Field(
+        default=22.0,
+        description="Points discounted when a verified corrective action or repair is performed on a subsystem"
+    )
+    verified_mitigation_discount: float = Field(
+        default=35.0,
+        description="Points discounted when a repair is confirmed by a successful post-repair inspection"
+    )
+    
+    # Risk level classification thresholds (calibrated 0-100 scale: 0-39.9 LOW, 40-69.9 MEDIUM, 70-89.9 HIGH, 90-100 CRITICAL)
+    threshold_low_max: float = Field(default=39.9, description="Max score for LOW risk")
     threshold_medium_max: float = Field(default=69.9, description="Max score for MEDIUM risk")
     threshold_high_max: float = Field(default=89.9, description="Max score for HIGH risk")
     # Above 89.9 (90.0+) is CRITICAL

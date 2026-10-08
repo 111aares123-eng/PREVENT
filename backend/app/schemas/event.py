@@ -15,6 +15,7 @@ class EventType(str, Enum):
     NEAR_MISS = "near_miss"
     INCIDENT = "incident"
     OPERATIONAL_REPORT = "operational_report"
+    CORRECTIVE_ACTION = "corrective_action"
 
 
 class Subsystem(str, Enum):

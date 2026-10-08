@@ -30,6 +30,7 @@ class SubsystemScoreBreakdown(BaseModel):
     cross_source_bonus_points: float
     temporal_acceleration_points: float
     near_miss_anchor_points: float
+    mitigation_discount_points: float = 0.0
     subsystem_total_score: float
     event_count: int
     distinct_sources_count: int
@@ -107,6 +108,57 @@ class RiskEngine:
             return self._normalize_dt(explicit_anchor)
         return datetime.now(timezone.utc)
 
+    @staticmethod
+    def _analyze_mitigation_event(ev: Event) -> Tuple[bool, bool, str]:
+        """
+        Determines if an event represents a mitigation / corrective action.
+        Returns (is_mitigation, is_verified, reason).
+        """
+        desc = (ev.description or "").lower()
+        ev_type = (ev.event_type or "").lower()
+        metadata = ev.raw_metadata or {}
+
+        # 1. Negative indications / failure to mitigate:
+        negations = [
+            "issue persists", "still failing", "persists", "unresolved",
+            "attempted but", "scheduled", "to be scheduled", "pending",
+            "inspection scheduled", "further diagnosis required"
+        ]
+        if any(neg in desc for neg in negations):
+            return False, False, "Repair attempted or scheduled, but hazard remains active / unmitigated"
+
+        # 2. Verification / Post-repair inspection passed:
+        verification_keywords = [
+            "post-repair inspection passed", "inspection passed", "verification passed",
+            "audit passed", "passed inspection", "verified and certified", "re-test passed",
+            "post-repair audit passed", "verification test passed"
+        ]
+        is_verified = (
+            any(vk in desc for vk in verification_keywords)
+            or str(metadata.get("status", "")).lower() == "verified"
+            or str(metadata.get("verification", "")).lower() == "passed"
+        )
+
+        # 3. Completed repair / Corrective action:
+        mitigation_keywords = [
+            "brake pads replaced", "pads replaced", "replaced", "caliper overhauled",
+            "calipers replaced", "brake overhaul", "repair completed", "corrective action completed",
+            "serviced and tested", "maintenance completed", "fixed", "overhaul completed",
+            "repaired", "components replaced", "friction pads replaced", "action completed"
+        ]
+        is_mit = (
+            ev_type == "corrective_action"
+            or any(mk in desc for mk in mitigation_keywords)
+            or str(metadata.get("action", "")).lower() in ("repair", "replace", "fix")
+            or str(metadata.get("status", "")).lower() in ("completed", "resolved")
+        )
+
+        if is_mit or is_verified:
+            reason = "Post-repair verification passed" if is_verified else "Corrective action / repair completed"
+            return True, is_verified, reason
+
+        return False, False, "Standard operational event"
+
     def _calculate_subsystem_risk(
         self,
         subsystem: str,
@@ -125,6 +177,7 @@ class RiskEngine:
                 cross_source_bonus_points=0.0,
                 temporal_acceleration_points=0.0,
                 near_miss_anchor_points=0.0,
+                mitigation_discount_points=0.0,
                 subsystem_total_score=0.0,
                 event_count=0,
                 distinct_sources_count=0,
@@ -132,10 +185,31 @@ class RiskEngine:
                 temporal_analysis=empty_temporal
             )
 
-        k = len(events)
-        distinct_roles = sorted(list({e.reporter_role for e in events if e.reporter_role}))
+        sorted_events = sorted(events, key=lambda e: self._normalize_dt(e.timestamp))
+        mitigations = [e for e in sorted_events if self._analyze_mitigation_event(e)[0]]
+        warnings = [e for e in sorted_events if not self._analyze_mitigation_event(e)[0]]
+
+        if not warnings:
+            empty_temporal = self.temporal_analyzer.analyze([])
+            return SubsystemScoreBreakdown(
+                subsystem=subsystem,
+                base_severity_points=0.0,
+                frequency_penalty_points=0.0,
+                cross_source_bonus_points=0.0,
+                temporal_acceleration_points=0.0,
+                near_miss_anchor_points=0.0,
+                mitigation_discount_points=0.0,
+                subsystem_total_score=0.0,
+                event_count=len(events),
+                distinct_sources_count=0,
+                distinct_roles=[],
+                temporal_analysis=empty_temporal
+            )
+
+        k_warn = len(warnings)
+        distinct_roles = sorted(list({e.reporter_role for e in warnings if e.reporter_role}))
         num_distinct_roles = len(distinct_roles)
-        max_sev = max(e.severity for e in events)
+        max_sev = max(e.severity for e in warnings)
 
         # Scaling factor: Prevents repeated negligible (severity 1) routine maintenance tasks from overwhelming risk score
         sev_scale = 0.35 if max_sev <= 1 else 1.0
@@ -143,15 +217,26 @@ class RiskEngine:
         # 1. Base Severity with Exponential Recency Decay & Evidence Retention
         half_life = max(1.0, self.risk_weights.recency_half_life_days)
         decay_constant = math.log(2) / half_life
-        retention_floor = getattr(self.risk_weights, "unmitigated_retention_floor", 0.65) if (k >= 2 and max_sev >= 3) else 0.0
+        retention_floor = getattr(self.risk_weights, "unmitigated_retention_floor", 0.65) if (k_warn >= 2 and max_sev >= 3) else 0.0
 
-        # Acute scale for isolated severe events (k == 1 and severity >= 5)
-        # Guarantees an isolated severity-5 near-miss or crash produces at least 45.0 (entering MEDIUM, NOT LOW)
-        acute_scale = 2.05 if (k == 1 and max_sev >= 5) else 1.0
-        max_cap = getattr(self.risk_weights, "acute_max_severity_points", 35.0) if (k == 1 and max_sev >= 5) else self.risk_weights.max_severity_points
+        # Isolated severe event temporal decay (after ~12h grace period, isolated acute hazards decline smoothly)
+        isolated_factor = 1.0
+        if k_warn == 1 and max_sev >= 5:
+            ev_time = self._normalize_dt(warnings[0].timestamp)
+            delta_seconds = max(0.0, (anchor_time - ev_time).total_seconds())
+            delta_days = delta_seconds / 86400.0
+            grace = getattr(self.risk_weights, "isolated_decay_grace_period_days", 0.5)
+            if delta_days > grace:
+                half_life_iso = getattr(self.risk_weights, "isolated_decay_half_life_days", 1.5)
+                decay_const = math.log(2) / max(0.1, half_life_iso)
+                isolated_factor = math.exp(-decay_const * (delta_days - grace))
+
+        # Acute scale for isolated severe events
+        acute_scale = (2.05 * isolated_factor) if (k_warn == 1 and max_sev >= 5) else 1.0
+        max_cap = (getattr(self.risk_weights, "acute_max_severity_points", 35.0) * isolated_factor) if (k_warn == 1 and max_sev >= 5) else self.risk_weights.max_severity_points
 
         raw_severity_sum = 0.0
-        for ev in events:
+        for ev in warnings:
             ev_time = self._normalize_dt(ev.timestamp)
             delta_seconds = max(0.0, (anchor_time - ev_time).total_seconds())
             delta_days = delta_seconds / 86400.0
@@ -164,8 +249,8 @@ class RiskEngine:
         base_severity_points = round(min(max_cap, raw_severity_sum), 2)
 
         # 2. Event Repetition / Frequency Penalty
-        if k >= 2:
-            raw_freq = (k - 1) * self.risk_weights.frequency_penalty_per_event * sev_scale
+        if k_warn >= 2:
+            raw_freq = (k_warn - 1) * self.risk_weights.frequency_penalty_per_event * sev_scale
             frequency_penalty_points = round(min(self.risk_weights.max_frequency_points, raw_freq), 2)
         else:
             frequency_penalty_points = 0.0
@@ -178,17 +263,17 @@ class RiskEngine:
         cross_source_bonus_points = round(min(self.risk_weights.max_cross_source_points, cross_source_bonus_points), 2)
 
         # 4. Temporal Acceleration Heuristic
-        temporal_result = self.temporal_analyzer.analyze(events)
+        temporal_result = self.temporal_analyzer.analyze(warnings)
         temporal_acceleration_points = round(temporal_result.temporal_acceleration_points, 2)
 
         # 5. Near-Miss / Critical Severity Anchor (Acute vs Pattern-Based)
         has_near_miss = any(
             ev.event_type in ("near_miss", "incident") or ev.severity >= 5
-            for ev in events
+            for ev in warnings
         )
         has_actual_incident = any(
             ev.event_type == "incident" and ev.severity >= 5
-            for ev in events
+            for ev in warnings
         )
 
         near_miss_anchor_points = 0.0
@@ -199,15 +284,36 @@ class RiskEngine:
             max_nm = getattr(self.risk_weights, "max_near_miss_points", 25.0)
             near_miss_anchor_points = min(max_nm, base_nm)
 
-        # Total Subsystem Score (clamped to 100.0)
-        subsystem_total = min(
-            100.0,
+        # 6. Mitigation / Corrective Action Discount
+        mitigation_discount_points = 0.0
+        if mitigations and warnings:
+            latest_mit = mitigations[-1]
+            latest_mit_time = self._normalize_dt(latest_mit.timestamp)
+            _, is_verified, _ = self._analyze_mitigation_event(latest_mit)
+
+            mitigated_warnings = [w for w in warnings if self._normalize_dt(w.timestamp) <= latest_mit_time]
+            unresolved_post_warnings = [w for w in warnings if self._normalize_dt(w.timestamp) > latest_mit_time]
+
+            if mitigated_warnings:
+                base_discount = (
+                    getattr(self.risk_weights, "verified_mitigation_discount", 35.0)
+                    if is_verified
+                    else getattr(self.risk_weights, "repair_mitigation_discount", 22.0)
+                )
+                # Unresolved warnings after repair penalize the mitigation discount
+                post_penalty = sum(w.severity * 6.0 for w in unresolved_post_warnings)
+                effective_discount = max(0.0, base_discount - post_penalty)
+                mitigation_discount_points = round(effective_discount, 2)
+
+        # Total Subsystem Score (clamped to 0.0 - 100.0)
+        raw_total = (
             base_severity_points
             + frequency_penalty_points
             + cross_source_bonus_points
             + temporal_acceleration_points
             + near_miss_anchor_points
         )
+        subsystem_total = max(0.0, min(100.0, raw_total - mitigation_discount_points))
 
         return SubsystemScoreBreakdown(
             subsystem=subsystem,
@@ -216,8 +322,9 @@ class RiskEngine:
             cross_source_bonus_points=cross_source_bonus_points,
             temporal_acceleration_points=temporal_acceleration_points,
             near_miss_anchor_points=near_miss_anchor_points,
+            mitigation_discount_points=mitigation_discount_points,
             subsystem_total_score=round(subsystem_total, 2),
-            event_count=k,
+            event_count=len(events),
             distinct_sources_count=num_distinct_roles,
             distinct_roles=distinct_roles,
             temporal_analysis=temporal_result
@@ -465,6 +572,7 @@ class RiskEngine:
                     "cross_source_bonus_points": 0.0,
                     "temporal_acceleration_points": 0.0,
                     "near_miss_anchor_points": 0.0,
+                    "mitigation_discount_points": 0.0,
                     "cross_subsystem_spillover": 0.0,
                     "total_score": 0.0
                 },
@@ -518,6 +626,7 @@ class RiskEngine:
             "cross_source_bonus_points": primary_breakdown.cross_source_bonus_points,
             "temporal_acceleration_points": primary_breakdown.temporal_acceleration_points,
             "near_miss_anchor_points": primary_breakdown.near_miss_anchor_points,
+            "mitigation_discount_points": primary_breakdown.mitigation_discount_points,
             "cross_subsystem_spillover": round(secondary_spillover, 2),
             "total_score": composite_score
         }
