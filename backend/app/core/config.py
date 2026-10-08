@@ -21,13 +21,23 @@ class RiskScoringWeights(BaseModel):
     # Recency decay half-life in days (exponential decay: older events carry diminishing weight)
     recency_half_life_days: float = Field(default=10.0, description="Half-life in days for recency decay")
     
+    # Retention floor for unmitigated safety hazards (severity >= 3) on recurring active subsystems
+    unmitigated_retention_floor: float = Field(
+        default=0.65,
+        description="Minimum weight retained by severe unmitigated warnings on active subsystems"
+    )
+    
     # Severity multiplier: raw contribution = severity * severity_weight * recency_weight
     severity_weight: float = Field(default=3.5, description="Point multiplier per severity level (1-5)")
     max_severity_points: float = Field(default=25.0, description="Maximum points obtainable from base severity")
+    acute_max_severity_points: float = Field(
+        default=35.0,
+        description="Maximum base severity points for isolated acute severe events"
+    )
     
     # Frequency penalty per repeated occurrence on same subsystem
     frequency_penalty_per_event: float = Field(default=3.5, description="Points added for each event beyond the first")
-    max_frequency_points: float = Field(default=16.0, description="Maximum frequency points")
+    max_frequency_points: float = Field(default=20.0, description="Maximum frequency points")
     
     # Cross-source corroboration tiers (number of distinct reporter roles on same subsystem)
     # {min_distinct_sources: bonus_points}
@@ -50,16 +60,28 @@ class RiskScoringWeights(BaseModel):
         default=3.5,
         description="Threshold in days considered a rapid follow-up event"
     )
+    short_interval_tolerance_days: float = Field(
+        default=1.0,
+        description="Smoothing tolerance window in days to prevent knife-edge score collapses from minor hour shifts"
+    )
     short_interval_bonus: float = Field(
         default=7.0,
         description="Points awarded if latest interval is under threshold"
     )
-    max_temporal_points: float = Field(default=15.0, description="Maximum temporal acceleration points")
+    max_temporal_points: float = Field(default=16.0, description="Maximum temporal acceleration points")
     
-    # Near-miss / Critical event anchor
+    # Near-miss / Critical event anchors
     near_miss_anchor_points: float = Field(
         default=10.0,
-        description="Points added if any event is a near-miss or critical incident (severity >= 4)"
+        description="Base points added if any event is a near-miss or critical incident in a multi-event pattern"
+    )
+    compound_incident_bonus: float = Field(
+        default=10.0,
+        description="Bonus points added when an actual collision/incident occurs within a corroborated pattern"
+    )
+    max_near_miss_points: float = Field(
+        default=25.0,
+        description="Maximum points obtainable from near-miss / collision anchors"
     )
     
     # Cross-subsystem spillover weight (how much secondary subsystem risks contribute to overall score)
@@ -68,11 +90,11 @@ class RiskScoringWeights(BaseModel):
         description="Fraction of secondary subsystem risk scores added to total"
     )
     
-    # Risk level classification thresholds
-    threshold_low_max: float = Field(default=39.9, description="Max score for LOW risk")
+    # Risk level classification thresholds (calibrated 0-100 scale: 0-44 LOW, 45-69 MEDIUM, 70-89 HIGH, 90-100 CRITICAL)
+    threshold_low_max: float = Field(default=44.9, description="Max score for LOW risk")
     threshold_medium_max: float = Field(default=69.9, description="Max score for MEDIUM risk")
-    threshold_high_max: float = Field(default=84.9, description="Max score for HIGH risk")
-    # Above 85 is CRITICAL
+    threshold_high_max: float = Field(default=89.9, description="Max score for HIGH risk")
+    # Above 89.9 (90.0+) is CRITICAL
 
 
 class ConfidenceScoringWeights(BaseModel):
@@ -80,22 +102,27 @@ class ConfidenceScoringWeights(BaseModel):
     Configurable weights for the Confidence Score (0-100%).
     Confidence represents the certainty/reliability of the assessment based on
     evidence volume, independent source diversity, temporal consistency, and subsystem specificity.
+    Avoids casually returning 100%.
     """
-    # Source diversity weight (up to 40% of confidence)
-    max_source_diversity_points: float = Field(default=35.0)
-    points_per_distinct_source: float = Field(default=9.0)
+    # Source diversity weight
+    max_source_diversity_points: float = Field(default=28.0)
+    points_per_distinct_source: float = Field(default=5.6)
     
-    # Evidence volume weight (up to 25% of confidence)
-    max_evidence_volume_points: float = Field(default=25.0)
-    points_per_event: float = Field(default=5.0)
+    # Evidence volume weight
+    max_evidence_volume_points: float = Field(default=22.0)
+    points_per_event: float = Field(default=4.4)
     
-    # Subsystem specificity weight (up to 20% of confidence)
-    # Higher confidence when signals converge on a single specific subsystem rather than scattered
-    max_subsystem_focus_points: float = Field(default=20.0)
+    # Subsystem specificity weight
+    max_subsystem_focus_points: float = Field(default=18.0)
     
-    # Temporal consistency weight (up to 20% of confidence)
-    # Higher confidence when events have clear temporal sequence within the observation window
-    max_temporal_coherence_points: float = Field(default=20.0)
+    # Temporal consistency weight
+    max_temporal_coherence_points: float = Field(default=18.0)
+    
+    # Maximum calibrated confidence ceiling (avoids casually returning 100%)
+    max_calibrated_confidence: float = Field(
+        default=96.0,
+        description="Upper ceiling for confidence scores to reflect inherent real-world uncertainty"
+    )
 
 
 class Settings(BaseSettings):

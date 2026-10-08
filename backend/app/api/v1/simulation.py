@@ -49,17 +49,17 @@ def simulate_signal(
             detail=f"Target asset '{payload.asset_id}' was not found in the fleet database."
         )
 
-    # Determine hypothetical timestamp (defaults to immediately after latest event time or current UTC)
+    # Determine hypothetical timestamp (defaults to current UTC evaluation time or immediately after latest event)
     hypo_time = payload.timestamp
     if hypo_time is None:
+        now_utc = datetime.now(timezone.utc)
         if asset.events:
             latest_time = max(e.timestamp for e in asset.events)
             if latest_time.tzinfo is None:
                 latest_time = latest_time.replace(tzinfo=timezone.utc)
-            # Place immediately after the latest existing relevant event (+1 hour)
-            hypo_time = latest_time + timedelta(hours=1)
+            hypo_time = max(now_utc, latest_time + timedelta(hours=1))
         else:
-            hypo_time = datetime.now(timezone.utc)
+            hypo_time = now_utc
     elif hypo_time.tzinfo is None:
         hypo_time = hypo_time.replace(tzinfo=timezone.utc)
 

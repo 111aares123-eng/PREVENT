@@ -86,23 +86,27 @@ class TemporalAnalyzer:
 
         avg_interval = round(sum(intervals_days) / len(intervals_days), 2)
         latest_interval = intervals_days[-1]
+        tolerance = getattr(self.weights, "short_interval_tolerance_days", 1.0)
+        threshold = self.weights.short_interval_threshold_days
+        threshold_effective = threshold + tolerance
 
         # 1. Evaluate whether intervals are contracting
         is_contracting = False
+        has_established_sub_acceleration = False
         if len(intervals_days) >= 2:
             first_half = intervals_days[:len(intervals_days) // 2]
             second_half = intervals_days[len(intervals_days) // 2:]
             mean_first = sum(first_half) / len(first_half) if first_half else avg_interval
             mean_second = sum(second_half) / len(second_half) if second_half else latest_interval
 
-            if mean_second < mean_first * 0.85:
+            if mean_second < mean_first * 0.92:
                 is_contracting = True
             elif all(intervals_days[j] <= intervals_days[j - 1] for j in range(1, len(intervals_days))) and intervals_days[-1] < intervals_days[0]:
                 is_contracting = True
-            elif latest_interval <= self.weights.short_interval_threshold_days and avg_interval > latest_interval:
+            elif latest_interval <= threshold_effective and avg_interval >= latest_interval:
                 is_contracting = True
 
-            # If not contracting across the full sequence, check if the preceding sub-sequence was contracting
+            # If not contracting across the full sequence, check if preceding sub-sequence was contracting
             # and is followed by repeated high-severity events (severity >= 4 or near miss)
             if not is_contracting and len(intervals_days) >= 3:
                 sub_intervals = intervals_days[:-1]
@@ -111,12 +115,13 @@ class TemporalAnalyzer:
                 sub_mean_first = sum(sub_first) / len(sub_first) if sub_first else avg_interval
                 sub_mean_second = sum(sub_second) / len(sub_second) if sub_second else latest_interval
                 sub_contracting = (
-                    (sub_mean_second < sub_mean_first * 0.85)
-                    or (sub_intervals[-1] <= self.weights.short_interval_threshold_days)
+                    (sub_mean_second < sub_mean_first * 0.92)
+                    or (sub_intervals[-1] <= threshold_effective)
                     or (all(sub_intervals[j] <= sub_intervals[j - 1] for j in range(1, len(sub_intervals))))
                 )
                 if sub_contracting and (sorted_events[-1].severity >= 4 or sorted_events[-1].event_type in ("near_miss", "incident")):
                     is_contracting = True
+                    has_established_sub_acceleration = True
 
         # 2. Evaluate whether severity is escalating
         severities = [e.severity for e in sorted_events]
@@ -133,8 +138,15 @@ class TemporalAnalyzer:
                 if max(severities[:len(severities)//2]) <= max(severities[len(severities)//2:]):
                     is_severity_escalating = True
 
-        # 3. Determine acceleration points and overall escalation flag
-        # Routine events (severity <= 1, e.g. scheduled inspections, clean passes) should not trigger safety hazard escalation
+        # 3. Determine acceleration points and overall escalation flag with smooth tolerance transitions
+        # Continuous smoothing factor based on latest interval proximity to threshold
+        if latest_interval <= threshold:
+            smooth_ratio = 1.0
+        elif latest_interval <= threshold_effective:
+            smooth_ratio = max(0.5, (threshold_effective - latest_interval) / tolerance)
+        else:
+            smooth_ratio = 0.0
+
         temporal_points = 0.0
         escalation_detected = False
         rationale_parts = []
@@ -146,22 +158,29 @@ class TemporalAnalyzer:
             )
         elif is_contracting and is_severity_escalating:
             escalation_detected = True
-            temporal_points = min(self.weights.max_temporal_points, self.weights.temporal_acceleration_bonus)
+            base_pts = self.weights.temporal_acceleration_bonus
+            # If established sub-sequence acceleration is corroborated by subsequent severe warning, retain full bonus
+            if has_established_sub_acceleration:
+                eff_pts = base_pts
+            else:
+                eff_pts = base_pts if latest_interval <= threshold else max(self.weights.short_interval_bonus, base_pts * smooth_ratio)
+            temporal_points = min(self.weights.max_temporal_points, eff_pts)
             rationale_parts.append(
                 f"Accelerating failure pattern: intervals contracted from initial {intervals_days[0]:.1f}d "
                 f"down to {min(intervals_days):.1f}d while severity escalated to {max_severity}."
             )
         elif is_contracting and max_severity >= 3:
             escalation_detected = True
-            temporal_points = min(self.weights.max_temporal_points, self.weights.short_interval_bonus)
+            eff_pts = self.weights.short_interval_bonus if latest_interval <= threshold else self.weights.short_interval_bonus * max(0.5, smooth_ratio)
+            temporal_points = min(self.weights.max_temporal_points, eff_pts)
             rationale_parts.append(
                 f"Event frequency tightening: average interval is {avg_interval:.1f}d with latest interval at {latest_interval:.1f}d on moderate severity issue."
             )
-        elif latest_interval <= self.weights.short_interval_threshold_days and max_severity >= 3:
+        elif latest_interval <= threshold_effective and max_severity >= 3:
             escalation_detected = True
-            temporal_points = min(self.weights.max_temporal_points, self.weights.short_interval_bonus)
+            temporal_points = min(self.weights.max_temporal_points, self.weights.short_interval_bonus * smooth_ratio)
             rationale_parts.append(
-                f"Rapid recurrence: latest event occurred within {latest_interval:.1f} days (under {self.weights.short_interval_threshold_days}d threshold)."
+                f"Rapid recurrence: latest event occurred within {latest_interval:.1f} days (within smoothed {threshold_effective:.1f}d threshold)."
             )
         else:
             temporal_points = 0.0

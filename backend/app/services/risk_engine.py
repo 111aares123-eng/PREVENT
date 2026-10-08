@@ -100,38 +100,11 @@ class RiskEngine:
     ) -> datetime:
         """
         Determines the reference time T_eval for recency decay.
-        1. Uses explicit_anchor if provided.
-        2. Determines the effective reference time from the latest relevant event timestamp:
-           - If DEFAULT_ANCHOR_TIME is configured and all events are <= DEFAULT_ANCHOR_TIME,
-             preserves DEFAULT_ANCHOR_TIME for deterministic historical/demo evaluation.
-           - If events extend past DEFAULT_ANCHOR_TIME (e.g. newly added live events),
-             advances reference time to the latest event timestamp so new events are never dropped.
-        3. If no events are available, falls back to DEFAULT_ANCHOR_TIME or current UTC.
+        1. Uses explicit_anchor if provided by caller (e.g. tests, replay, or seeded demo calls).
+        2. In production / live evaluation, uses current UTC time (never silently pinning to historical anchor).
         """
         if explicit_anchor is not None:
             return self._normalize_dt(explicit_anchor)
-
-        latest_ev_dt: Optional[datetime] = None
-        if events:
-            latest_ev = max(events, key=lambda e: self._normalize_dt(e.timestamp))
-            latest_ev_dt = self._normalize_dt(latest_ev.timestamp)
-
-        default_anchor_dt: Optional[datetime] = None
-        if settings.DEFAULT_ANCHOR_TIME:
-            try:
-                dt_str = settings.DEFAULT_ANCHOR_TIME.replace("Z", "+00:00")
-                default_anchor_dt = self._normalize_dt(datetime.fromisoformat(dt_str))
-            except Exception:
-                pass
-
-        if latest_ev_dt is not None:
-            if default_anchor_dt is not None:
-                return max(default_anchor_dt, latest_ev_dt)
-            return latest_ev_dt
-
-        if default_anchor_dt is not None:
-            return default_anchor_dt
-
         return datetime.now(timezone.utc)
 
     def _calculate_subsystem_risk(
@@ -167,10 +140,15 @@ class RiskEngine:
         # Scaling factor: Prevents repeated negligible (severity 1) routine maintenance tasks from overwhelming risk score
         sev_scale = 0.35 if max_sev <= 1 else 1.0
 
-        # 1. Base Severity with Exponential Recency Decay
-        # Half-life lambda = ln(2) / t_half
+        # 1. Base Severity with Exponential Recency Decay & Evidence Retention
         half_life = max(1.0, self.risk_weights.recency_half_life_days)
         decay_constant = math.log(2) / half_life
+        retention_floor = getattr(self.risk_weights, "unmitigated_retention_floor", 0.65) if (k >= 2 and max_sev >= 3) else 0.0
+
+        # Acute scale for isolated severe events (k == 1 and severity >= 5)
+        # Guarantees an isolated severity-5 near-miss or crash produces at least 45.0 (entering MEDIUM, NOT LOW)
+        acute_scale = 2.05 if (k == 1 and max_sev >= 5) else 1.0
+        max_cap = getattr(self.risk_weights, "acute_max_severity_points", 35.0) if (k == 1 and max_sev >= 5) else self.risk_weights.max_severity_points
 
         raw_severity_sum = 0.0
         for ev in events:
@@ -178,10 +156,12 @@ class RiskEngine:
             delta_seconds = max(0.0, (anchor_time - ev_time).total_seconds())
             delta_days = delta_seconds / 86400.0
             recency_weight = math.exp(-decay_constant * delta_days)
-            raw_contrib = ev.severity * self.risk_weights.severity_weight * recency_weight
+            if retention_floor > 0.0:
+                recency_weight = max(retention_floor, recency_weight)
+            raw_contrib = ev.severity * self.risk_weights.severity_weight * recency_weight * sev_scale * acute_scale
             raw_severity_sum += raw_contrib
 
-        base_severity_points = round(min(self.risk_weights.max_severity_points, raw_severity_sum), 2)
+        base_severity_points = round(min(max_cap, raw_severity_sum), 2)
 
         # 2. Event Repetition / Frequency Penalty
         if k >= 2:
@@ -191,7 +171,6 @@ class RiskEngine:
             frequency_penalty_points = 0.0
 
         # 3. Cross-Source Corroboration Multiplier
-        # Multiple independent roles verifying the same subsystem drastically increases credibility
         cross_source_bonus_points = 0.0
         for tier_count in sorted(self.risk_weights.cross_source_tiers.keys()):
             if num_distinct_roles >= tier_count:
@@ -202,12 +181,23 @@ class RiskEngine:
         temporal_result = self.temporal_analyzer.analyze(events)
         temporal_acceleration_points = round(temporal_result.temporal_acceleration_points, 2)
 
-        # 5. Near-Miss / Critical Severity Anchor
+        # 5. Near-Miss / Critical Severity Anchor (Acute vs Pattern-Based)
         has_near_miss = any(
             ev.event_type in ("near_miss", "incident") or ev.severity >= 5
             for ev in events
         )
-        near_miss_anchor_points = self.risk_weights.near_miss_anchor_points if has_near_miss else 0.0
+        has_actual_incident = any(
+            ev.event_type == "incident" and ev.severity >= 5
+            for ev in events
+        )
+
+        near_miss_anchor_points = 0.0
+        if has_near_miss:
+            base_nm = self.risk_weights.near_miss_anchor_points
+            if has_actual_incident:
+                base_nm += getattr(self.risk_weights, "compound_incident_bonus", 10.0)
+            max_nm = getattr(self.risk_weights, "max_near_miss_points", 25.0)
+            near_miss_anchor_points = min(max_nm, base_nm)
 
         # Total Subsystem Score (clamped to 100.0)
         subsystem_total = min(
@@ -242,10 +232,11 @@ class RiskEngine:
         Computes the Evidence Confidence Score (0-100%).
         Answers: "How strong is the evidence supporting this assessment?"
         Factors:
-        - Source diversity (up to 35 pts)
-        - Evidence volume (up to 25 pts)
-        - Subsystem focus / concentration (up to 20 pts)
-        - Temporal coherence (up to 20 pts)
+        - Source diversity
+        - Evidence volume
+        - Subsystem focus / concentration
+        - Temporal coherence
+        Avoids casually returning 100%.
         """
         if not events:
             return 0.0, {
@@ -260,42 +251,36 @@ class RiskEngine:
         all_roles = {e.reporter_role for e in events if e.reporter_role}
         num_roles = len(all_roles)
 
-        # 1. Source Diversity Points (up to 35 pts)
-        # More distinct reporting perspectives = higher certainty
+        # 1. Source Diversity Points
         source_div_pts = min(
             self.confidence_weights.max_source_diversity_points,
             num_roles * self.confidence_weights.points_per_distinct_source
         )
 
-        # 2. Evidence Volume Points (up to 25 pts)
-        # Sufficient number of signals
+        # 2. Evidence Volume Points
         volume_pts = min(
             self.confidence_weights.max_evidence_volume_points,
             k * self.confidence_weights.points_per_event
         )
 
-        # 3. Subsystem Focus Points (up to 20 pts)
-        # Signals concentrated on a specific subsystem provide clearer evidence than scattered noise
+        # 3. Subsystem Focus Points
         if primary_breakdown and k > 0:
             primary_ratio = primary_breakdown.event_count / k
             subsystem_focus_pts = round(primary_ratio * self.confidence_weights.max_subsystem_focus_points, 2)
         else:
-            subsystem_focus_pts = 10.0
+            subsystem_focus_pts = 9.0
 
-        # 4. Temporal Coherence Points (up to 20 pts)
-        # Multiple events with coherent chronological sequence
+        # 4. Temporal Coherence Points
         if k >= 3 and primary_breakdown and primary_breakdown.temporal_analysis.intervals_days:
-            # Having 3+ events with tracked intervals grants high temporal coherence
             temporal_coherence_pts = self.confidence_weights.max_temporal_coherence_points
         elif k >= 2:
-            temporal_coherence_pts = 12.0
+            temporal_coherence_pts = 10.0
         else:
-            temporal_coherence_pts = 5.0
+            temporal_coherence_pts = 4.0
 
-        total_conf = min(
-            100.0,
-            source_div_pts + volume_pts + subsystem_focus_pts + temporal_coherence_pts
-        )
+        raw_conf = source_div_pts + volume_pts + subsystem_focus_pts + temporal_coherence_pts
+        max_ceiling = getattr(self.confidence_weights, "max_calibrated_confidence", 96.0)
+        total_conf = min(max_ceiling, raw_conf)
 
         breakdown = {
             "source_diversity_points": round(source_div_pts, 2),
@@ -408,15 +393,39 @@ class RiskEngine:
         """
         t_eval = self._determine_anchor_time(events, anchor_time)
 
-        # Filter events within analysis window
+        # Filter events within analysis window and connected hazard chains
         window_days = self.risk_weights.analysis_window_days
-        window_events = []
+        all_by_sub: Dict[str, List[Event]] = {}
         for e in events:
-            ev_dt = self._normalize_dt(e.timestamp)
-            delta_days = (t_eval - ev_dt).total_seconds() / 86400.0
-            # Include events in window (from t_eval - window_days up to t_eval + grace period)
-            if -1.0 <= delta_days <= window_days:
-                window_events.append(e)
+            sub = e.subsystem or "general"
+            all_by_sub.setdefault(sub, []).append(e)
+
+        window_events = []
+        for sub_name, sub_evs in all_by_sub.items():
+            sorted_sub_evs = sorted(sub_evs, key=lambda e: self._normalize_dt(e.timestamp), reverse=True)
+            active_chain: List[Event] = []
+            prev_dt: Optional[datetime] = None
+
+            for e in sorted_sub_evs:
+                ev_dt = self._normalize_dt(e.timestamp)
+                delta_days = (t_eval - ev_dt).total_seconds() / 86400.0
+
+                # Direct inclusion within rolling window (with 1 day grace)
+                if -1.0 <= delta_days <= window_days:
+                    active_chain.append(e)
+                    prev_dt = ev_dt
+                elif prev_dt is not None:
+                    # Chained inclusion: preceding warning in active unmitigated sequence occurred within window_days of next event
+                    chain_gap_days = (prev_dt - ev_dt).total_seconds() / 86400.0
+                    if 0.0 <= chain_gap_days <= window_days:
+                        active_chain.append(e)
+                        prev_dt = ev_dt
+                    else:
+                        break
+                else:
+                    break
+
+            window_events.extend(active_chain)
 
         # Group by subsystem
         events_by_sub: Dict[str, List[Event]] = {}
@@ -660,7 +669,7 @@ class RiskEngine:
                 "risk_level": step_eval.risk_level
             })
 
-        latest_eval = self.evaluate_asset(asset, sorted_events)
+        latest_eval = self.evaluate_asset(asset, sorted_events, anchor_time=sorted_events[-1].timestamp)
 
         return {
             "asset_id": asset.asset_id,
