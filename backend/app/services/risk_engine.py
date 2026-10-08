@@ -101,23 +101,36 @@ class RiskEngine:
         """
         Determines the reference time T_eval for recency decay.
         1. Uses explicit_anchor if provided.
-        2. Falls back to DEFAULT_ANCHOR_TIME in settings if available.
-        3. Falls back to the latest event timestamp in the sequence.
-        4. Defaults to current UTC time.
+        2. Determines the effective reference time from the latest relevant event timestamp:
+           - If DEFAULT_ANCHOR_TIME is configured and all events are <= DEFAULT_ANCHOR_TIME,
+             preserves DEFAULT_ANCHOR_TIME for deterministic historical/demo evaluation.
+           - If events extend past DEFAULT_ANCHOR_TIME (e.g. newly added live events),
+             advances reference time to the latest event timestamp so new events are never dropped.
+        3. If no events are available, falls back to DEFAULT_ANCHOR_TIME or current UTC.
         """
         if explicit_anchor is not None:
             return self._normalize_dt(explicit_anchor)
 
+        latest_ev_dt: Optional[datetime] = None
+        if events:
+            latest_ev = max(events, key=lambda e: self._normalize_dt(e.timestamp))
+            latest_ev_dt = self._normalize_dt(latest_ev.timestamp)
+
+        default_anchor_dt: Optional[datetime] = None
         if settings.DEFAULT_ANCHOR_TIME:
             try:
                 dt_str = settings.DEFAULT_ANCHOR_TIME.replace("Z", "+00:00")
-                return self._normalize_dt(datetime.fromisoformat(dt_str))
+                default_anchor_dt = self._normalize_dt(datetime.fromisoformat(dt_str))
             except Exception:
                 pass
 
-        if events:
-            latest_ev = max(events, key=lambda e: e.timestamp)
-            return self._normalize_dt(latest_ev.timestamp)
+        if latest_ev_dt is not None:
+            if default_anchor_dt is not None:
+                return max(default_anchor_dt, latest_ev_dt)
+            return latest_ev_dt
+
+        if default_anchor_dt is not None:
+            return default_anchor_dt
 
         return datetime.now(timezone.utc)
 

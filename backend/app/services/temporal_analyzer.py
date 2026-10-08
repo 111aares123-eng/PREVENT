@@ -102,6 +102,22 @@ class TemporalAnalyzer:
             elif latest_interval <= self.weights.short_interval_threshold_days and avg_interval > latest_interval:
                 is_contracting = True
 
+            # If not contracting across the full sequence, check if the preceding sub-sequence was contracting
+            # and is followed by repeated high-severity events (severity >= 4 or near miss)
+            if not is_contracting and len(intervals_days) >= 3:
+                sub_intervals = intervals_days[:-1]
+                sub_first = sub_intervals[:len(sub_intervals) // 2]
+                sub_second = sub_intervals[len(sub_intervals) // 2:]
+                sub_mean_first = sum(sub_first) / len(sub_first) if sub_first else avg_interval
+                sub_mean_second = sum(sub_second) / len(sub_second) if sub_second else latest_interval
+                sub_contracting = (
+                    (sub_mean_second < sub_mean_first * 0.85)
+                    or (sub_intervals[-1] <= self.weights.short_interval_threshold_days)
+                    or (all(sub_intervals[j] <= sub_intervals[j - 1] for j in range(1, len(sub_intervals))))
+                )
+                if sub_contracting and (sorted_events[-1].severity >= 4 or sorted_events[-1].event_type in ("near_miss", "incident")):
+                    is_contracting = True
+
         # 2. Evaluate whether severity is escalating
         severities = [e.severity for e in sorted_events]
         max_severity = max(severities)
@@ -113,6 +129,9 @@ class TemporalAnalyzer:
                 is_severity_escalating = True
             elif len(severities) >= 3 and severities[-1] >= 4 and sum(severities[-2:]) / 2 > sum(severities[:2]) / 2:
                 is_severity_escalating = True
+            elif max_severity >= 4 and severities[-1] >= 4 and any(s >= 4 for s in severities[:-1]):
+                if max(severities[:len(severities)//2]) <= max(severities[len(severities)//2:]):
+                    is_severity_escalating = True
 
         # 3. Determine acceleration points and overall escalation flag
         # Routine events (severity <= 1, e.g. scheduled inspections, clean passes) should not trigger safety hazard escalation
@@ -130,7 +149,7 @@ class TemporalAnalyzer:
             temporal_points = min(self.weights.max_temporal_points, self.weights.temporal_acceleration_bonus)
             rationale_parts.append(
                 f"Accelerating failure pattern: intervals contracted from initial {intervals_days[0]:.1f}d "
-                f"down to {latest_interval:.1f}d while severity escalated from {severities[0]} to {severities[-1]}."
+                f"down to {min(intervals_days):.1f}d while severity escalated to {max_severity}."
             )
         elif is_contracting and max_severity >= 3:
             escalation_detected = True

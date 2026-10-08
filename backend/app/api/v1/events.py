@@ -48,6 +48,7 @@ def extract_event(
     """
     return ingestion_service.extract_from_report(
         report_text=payload.report_text,
+        asset_id=payload.asset_id,
         db=db,
         provider=llm_provider
     )

@@ -7,7 +7,7 @@ Coordinates:
 4. Recalculation of asset risk via PREVENT's deterministic RiskEngine
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -46,12 +46,14 @@ class EventIngestionService:
     def extract_from_report(
         self,
         report_text: str,
+        asset_id: Optional[str] = None,
         db: Optional[Session] = None,
         provider: Optional[LLMProvider] = None
     ) -> EventExtractResponse:
         """
         Extracts structured safety event data from an unstructured text report.
         Strictly validates output using Pydantic. Does NOT mutate the database.
+        If authoritative asset_id is provided by caller, it is injected before validation.
         """
         try:
             active_provider = provider or self.get_provider()
@@ -116,6 +118,10 @@ class EventIngestionService:
                 fallback_used=fallback_used,
                 fallback_message=fallback_message
             )
+
+        # Inject / override authoritative asset_id before Pydantic validation if provided
+        if asset_id and asset_id.strip():
+            raw_data["asset_id"] = asset_id.strip().upper()
 
         # Validate structured fields through Pydantic
         try:
@@ -187,11 +193,29 @@ class EventIngestionService:
         # 1. Evaluate baseline risk before adding new event
         previous_assessment = risk_engine.evaluate_asset(asset, asset.events)
 
+        # Determine effective event timestamp (if not supplied, place immediately after latest asset event)
+        if event_in.timestamp is not None:
+            effective_timestamp = event_in.timestamp
+            if effective_timestamp.tzinfo is None:
+                effective_timestamp = effective_timestamp.replace(tzinfo=timezone.utc)
+        else:
+            if asset.events:
+                valid_times = [e.timestamp for e in asset.events if e.timestamp]
+                if valid_times:
+                    latest_t = max(valid_times)
+                    if latest_t.tzinfo is None:
+                        latest_t = latest_t.replace(tzinfo=timezone.utc)
+                    effective_timestamp = latest_t + timedelta(hours=1)
+                else:
+                    effective_timestamp = datetime.now(timezone.utc)
+            else:
+                effective_timestamp = datetime.now(timezone.utc)
+
         # 2. Persist new Event to database
         db_event = Event(
             id=str(uuid.uuid4()),
             asset_id=event_in.asset_id,
-            timestamp=event_in.timestamp or datetime.now(timezone.utc),
+            timestamp=effective_timestamp,
             event_type=event_in.event_type.value if hasattr(event_in.event_type, "value") else str(event_in.event_type),
             subsystem=event_in.subsystem.value if hasattr(event_in.subsystem, "value") else str(event_in.subsystem),
             severity=event_in.severity,

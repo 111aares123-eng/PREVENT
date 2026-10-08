@@ -4,7 +4,7 @@ Allows operators to evaluate the safety impact of hypothetical events in real-ti
 without altering persistent database state.
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.api.deps import get_db, get_risk_engine
@@ -49,14 +49,15 @@ def simulate_signal(
             detail=f"Target asset '{payload.asset_id}' was not found in the fleet database."
         )
 
-    # Determine hypothetical timestamp (defaults to current UTC or latest event time)
+    # Determine hypothetical timestamp (defaults to immediately after latest event time or current UTC)
     hypo_time = payload.timestamp
     if hypo_time is None:
         if asset.events:
             latest_time = max(e.timestamp for e in asset.events)
             if latest_time.tzinfo is None:
                 latest_time = latest_time.replace(tzinfo=timezone.utc)
-            hypo_time = latest_time
+            # Place immediately after the latest existing relevant event (+1 hour)
+            hypo_time = latest_time + timedelta(hours=1)
         else:
             hypo_time = datetime.now(timezone.utc)
     elif hypo_time.tzinfo is None:

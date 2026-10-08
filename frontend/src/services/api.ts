@@ -74,10 +74,13 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  extractEvent: (reportText: string) =>
+  extractEvent: (reportText: string, assetId?: string | null) =>
     request<EventExtractResponse>('/api/v1/events/extract', {
       method: 'POST',
-      body: JSON.stringify({ report_text: reportText }),
+      body: JSON.stringify({
+        report_text: reportText,
+        ...(assetId ? { asset_id: assetId.trim().toUpperCase() } : {}),
+      }),
     }),
 
   ingestEvent: (payload: EventCreateRequest) =>

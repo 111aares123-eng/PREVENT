@@ -179,6 +179,11 @@ export interface ExtractedEventData {
   raw_metadata?: Record<string, any> | null;
 }
 
+export interface EventExtractRequest {
+  report_text: string;
+  asset_id?: string | null;
+}
+
 export interface EventExtractResponse {
   extracted_event: ExtractedEventData | null;
   provider: string;

@@ -9,7 +9,7 @@ Your mission is to read unstructured human-written transit safety reports (from 
 
 CRITICAL CONSTRAINTS:
 1. Extract ONLY information directly supported by the text of the report.
-2. DO NOT invent or hallucinate an asset ID. If the asset identifier (e.g. BUS-142, TRK-089) is not mentioned in the report, set "asset_id" to null.
+2. The asset_id is supplied by the operator/system and must not be inferred. Do not guess an asset_id. If no asset identifier is explicitly mentioned in the report, set "asset_id" to null.
 3. DO NOT invent severity without evidence. If severity cannot be confidently determined, use a safe fallback of 3.
 4. Normalize terminology strictly to PREVENT's valid enumerations:
    - event_type MUST be one of:

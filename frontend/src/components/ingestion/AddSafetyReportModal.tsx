@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Sparkles,
@@ -12,7 +12,8 @@ import {
   Sliders,
   TrendingUp,
   ShieldCheck,
-  RotateCcw
+  RotateCcw,
+  Clock
 } from 'lucide-react';
 import { api } from '../../services/api';
 import type {
@@ -25,6 +26,7 @@ interface AddSafetyReportModalProps {
   onClose: () => void;
   onEventIngested?: (assetId: string) => void;
   availableAssetIds?: string[];
+  initialAssetId?: string;
 }
 
 const SAMPLE_REPORTS = [
@@ -46,7 +48,8 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   isOpen,
   onClose,
   onEventIngested,
-  availableAssetIds = []
+  availableAssetIds = [],
+  initialAssetId = ''
 }) => {
   const navigate = useNavigate();
 
@@ -55,10 +58,22 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
   // Step 1: Input state
   const [reportText, setReportText] = useState('');
+  const [selectedAssetId, setSelectedAssetId] = useState<string>(
+    initialAssetId || availableAssetIds[0] || 'BUS-142'
+  );
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [activeProvider, setActiveProvider] = useState<string>('groq');
   const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
+
+  // Synchronize when initialAssetId or availableAssetIds change or modal opens
+  useEffect(() => {
+    if (initialAssetId) {
+      setSelectedAssetId(initialAssetId);
+    } else if (availableAssetIds.length > 0 && (!selectedAssetId || !availableAssetIds.includes(selectedAssetId))) {
+      setSelectedAssetId(availableAssetIds[0]);
+    }
+  }, [initialAssetId, availableAssetIds, isOpen]);
 
   // Step 2: Extracted & editable state
   const [isEditing, setIsEditing] = useState(false);
@@ -66,8 +81,15 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   const [isIngesting, setIsIngesting] = useState(false);
   const [ingestionError, setIngestionError] = useState<string | null>(null);
 
+  const getNowLocalDateTime = () => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    return new Date(now.getTime() - offset).toISOString().slice(0, 16);
+  };
+
   // Form field state for editing / verification
   const [assetId, setAssetId] = useState('');
+  const [eventTimestamp, setEventTimestamp] = useState<string>(getNowLocalDateTime);
   const [eventType, setEventType] = useState('operational_report');
   const [subsystem, setSubsystem] = useState('braking');
   const [severity, setSeverity] = useState(3);
@@ -85,6 +107,8 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   const handleReset = () => {
     setStep('input');
     setReportText('');
+    setSelectedAssetId(initialAssetId || availableAssetIds[0] || 'BUS-142');
+    setEventTimestamp(getNowLocalDateTime());
     setIsExtracting(false);
     setExtractionError(null);
     setFallbackNotice(null);
@@ -102,10 +126,19 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
   const handleSelectSample = (text: string) => {
     setReportText(text);
+    if (!initialAssetId) {
+      if (text.includes('BUS-142')) setSelectedAssetId('BUS-142');
+      else if (text.includes('BUS-204')) setSelectedAssetId('BUS-204');
+      else if (text.includes('TRK-089')) setSelectedAssetId('TRK-089');
+    }
     setExtractionError(null);
   };
 
   const handleExtract = async () => {
+    if (!selectedAssetId.trim()) {
+      setExtractionError('Please select or specify a target vehicle asset before extracting.');
+      return;
+    }
     if (!reportText.trim()) {
       setExtractionError('Please provide a safety report narrative before extracting.');
       return;
@@ -120,7 +153,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
     setValidationErrors([]);
 
     try {
-      const response = await api.extractEvent(reportText);
+      const response = await api.extractEvent(reportText, selectedAssetId);
       setActiveProvider(response.provider);
 
       if (response.fallback_used || response.fallback_message) {
@@ -133,7 +166,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
       if (response.validation_status === 'valid' && response.extracted_event) {
         const ev = response.extracted_event;
-        setAssetId(ev.asset_id || '');
+        setAssetId(selectedAssetId || ev.asset_id || '');
         setEventType(ev.event_type || 'operational_report');
         setSubsystem(ev.subsystem || 'braking');
         setSeverity(ev.severity || 3);
@@ -142,6 +175,21 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
         setDescription(ev.description || reportText);
         setLocation(ev.location || '');
         setMetadataWeather(ev.raw_metadata?.weather || '');
+        if (ev.timestamp) {
+          try {
+            const d = new Date(ev.timestamp);
+            if (!isNaN(d.getTime())) {
+              const offset = d.getTimezoneOffset() * 60000;
+              setEventTimestamp(new Date(d.getTime() - offset).toISOString().slice(0, 16));
+            } else {
+              setEventTimestamp(getNowLocalDateTime());
+            }
+          } catch {
+            setEventTimestamp(getNowLocalDateTime());
+          }
+        } else {
+          setEventTimestamp(getNowLocalDateTime());
+        }
         setValidationErrors([]);
         setIsEditing(false);
         setStep('preview');
@@ -149,7 +197,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
         // Validation notice or invalid extraction
         const ev = response.extracted_event;
         if (ev) {
-          setAssetId(ev.asset_id || '');
+          setAssetId(selectedAssetId || ev.asset_id || '');
           setEventType(ev.event_type || 'operational_report');
           setSubsystem(ev.subsystem || 'braking');
           setSeverity(ev.severity || 3);
@@ -158,10 +206,26 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
           setDescription(ev.description || reportText);
           setLocation(ev.location || '');
           setMetadataWeather(ev.raw_metadata?.weather || '');
+          if (ev.timestamp) {
+            try {
+              const d = new Date(ev.timestamp);
+              if (!isNaN(d.getTime())) {
+                const offset = d.getTimezoneOffset() * 60000;
+                setEventTimestamp(new Date(d.getTime() - offset).toISOString().slice(0, 16));
+              } else {
+                setEventTimestamp(getNowLocalDateTime());
+              }
+            } catch {
+              setEventTimestamp(getNowLocalDateTime());
+            }
+          } else {
+            setEventTimestamp(getNowLocalDateTime());
+          }
         } else {
           // Fallback to manual form populated from text
-          setAssetId(availableAssetIds[0] || 'BUS-142');
+          setAssetId(selectedAssetId || availableAssetIds[0] || 'BUS-142');
           setDescription(reportText);
+          setEventTimestamp(getNowLocalDateTime());
         }
         setValidationErrors(response.validation_errors || ['Extraction contains unverified fields. Please review and adjust.']);
         setIsEditing(true);
@@ -190,6 +254,13 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
     setIsIngesting(true);
     setIngestionError(null);
 
+    let isoTimestamp: string;
+    try {
+      isoTimestamp = new Date(eventTimestamp).toISOString();
+    } catch {
+      isoTimestamp = new Date().toISOString();
+    }
+
     const payload: EventCreateRequest = {
       asset_id: assetId.trim().toUpperCase(),
       event_type: eventType,
@@ -198,6 +269,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
       description: description.trim(),
       source: source.trim() || 'driver',
       reporter_role: reporterRole,
+      timestamp: isoTimestamp,
       location: location.trim() ? location.trim() : null,
       raw_metadata: metadataWeather.trim() ? { weather: metadataWeather.trim() } : undefined,
     };
@@ -285,6 +357,49 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
           {/* STEP 1: NATURAL LANGUAGE INPUT */}
           {step === 'input' && (
             <div className="space-y-4">
+              {/* Target Fleet Asset Selector */}
+              <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="target-asset-select" className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-orange-400" />
+                    Target Fleet Asset
+                  </label>
+                  {initialAssetId ? (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-orange-950/60 text-orange-400 border border-orange-800/40 uppercase">
+                      Asset Dossier: {initialAssetId}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                      Required
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400">
+                  Select the vehicle asset to link with this safety report. PREVENT enforces this asset ID authoritatively during extraction.
+                </p>
+                <div className="flex items-center gap-2">
+                  <select
+                    id="target-asset-select"
+                    value={selectedAssetId}
+                    onChange={(e) => {
+                      setSelectedAssetId(e.target.value.toUpperCase());
+                      setExtractionError(null);
+                    }}
+                    className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white font-mono font-bold focus:border-orange-500 focus:outline-none"
+                  >
+                    <option value="">-- Choose Target Fleet Asset --</option>
+                    {(availableAssetIds.length > 0
+                      ? availableAssetIds
+                      : ['BUS-142', 'BUS-204', 'TRK-089', 'BUS-105', 'VAN-012', 'BUS-301', 'TRK-044', 'BUS-512']
+                    ).map((id) => (
+                      <option key={id} value={id}>
+                        {id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label htmlFor="safety-report-textarea" className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
                   Describe Warning, Complaint, Inspection Finding, or Near-Miss
@@ -494,7 +609,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                     <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
                       <span className="text-[10px] uppercase font-mono text-slate-500 block">
                         Source
@@ -506,6 +621,17 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                         Reporter Role
                       </span>
                       <span className="text-slate-300 font-medium capitalize">{reporterRole}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] uppercase font-mono text-slate-500 block">
+                          Event Time
+                        </span>
+                        <span className="text-slate-200 font-medium font-mono text-[11px]">
+                          {eventTimestamp ? new Date(eventTimestamp).toLocaleString() : 'Current Time'}
+                        </span>
+                      </div>
+                      <Clock className="w-3.5 h-3.5 text-orange-400 shrink-0" />
                     </div>
                   </div>
 
@@ -663,6 +789,31 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-semibold uppercase text-slate-400 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-orange-400" />
+                          Event Time (Local)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setEventTimestamp(getNowLocalDateTime())}
+                          className="text-[10px] text-orange-400 hover:text-orange-300 underline"
+                        >
+                          Set to Now
+                        </button>
+                      </div>
+                      <input
+                        type="datetime-local"
+                        value={eventTimestamp}
+                        onChange={(e) => setEventTimestamp(e.target.value)}
+                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 font-mono focus:border-orange-500 focus:outline-none"
+                      />
+                      <span className="text-[10px] text-slate-500 mt-0.5 block">
+                        Editable for back-dated or historical reports. Evaluated in UTC.
+                      </span>
+                    </div>
+
+                    <div>
                       <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
                         Location (Optional)
                       </label>
@@ -674,18 +825,19 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                         className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 focus:border-orange-500 focus:outline-none"
                       />
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
-                        Weather Condition (Metadata)
-                      </label>
-                      <input
-                        type="text"
-                        value={metadataWeather}
-                        onChange={(e) => setMetadataWeather(e.target.value)}
-                        placeholder="e.g. heavy rain, snow, wet"
-                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 focus:border-orange-500 focus:outline-none"
-                      />
-                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                      Weather Condition (Metadata)
+                    </label>
+                    <input
+                      type="text"
+                      value={metadataWeather}
+                      onChange={(e) => setMetadataWeather(e.target.value)}
+                      placeholder="e.g. heavy rain, snow, wet"
+                      className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 focus:border-orange-500 focus:outline-none"
+                    />
                   </div>
                 </div>
               )}
@@ -819,7 +971,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
               </button>
               <button
                 type="button"
-                disabled={isExtracting || !reportText.trim()}
+                disabled={isExtracting || !reportText.trim() || !selectedAssetId.trim()}
                 onClick={handleExtract}
                 className="inline-flex items-center gap-2 text-xs font-bold px-4.5 py-2.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-950 transition-all disabled:opacity-50 disabled:pointer-events-none"
               >
@@ -848,7 +1000,11 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
               >
                 ← Back to Report
               </button>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-400 font-mono bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800">
+                  <Clock className="w-3.5 h-3.5 text-orange-400" />
+                  <span>Target Time: <span className="text-slate-200">{eventTimestamp ? new Date(eventTimestamp).toLocaleString() : 'Now'}</span></span>
+                </div>
                 <button
                   type="button"
                   onClick={handleClose}

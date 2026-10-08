@@ -11,6 +11,7 @@ import { RecommendedActionCard } from '../components/assets/RecommendedActionCar
 import { EventTimeline } from '../components/timeline/EventTimeline';
 import { EvidenceGraphView } from '../components/evidence/EvidenceGraphView';
 import { WhatIfSimulator } from '../components/simulation/WhatIfSimulator';
+import { AddSafetyReportModal } from '../components/ingestion/AddSafetyReportModal';
 import { AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 
 export const AssetDetail: React.FC = () => {
@@ -22,6 +23,7 @@ export const AssetDetail: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [is404, setIs404] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const fetchAssetData = async (refresh = false) => {
     if (!assetId) return;
@@ -56,7 +58,11 @@ export const AssetDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
-      <Header onRefresh={() => fetchAssetData(true)} isRefreshing={isRefreshing} />
+      <Header
+        onRefresh={() => fetchAssetData(true)}
+        isRefreshing={isRefreshing}
+        onAddReport={() => setIsReportModalOpen(true)}
+      />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* 404 Not Found State */}
@@ -142,8 +148,12 @@ export const AssetDetail: React.FC = () => {
               </div>
             </div>
 
-            {/* Evidence Relationship Graph View */}
-            <EvidenceGraphView evidenceGraph={dossier.evidence_graph} />
+            {/* Evidence Relationship Map View */}
+            <EvidenceGraphView
+              evidenceGraph={dossier.evidence_graph}
+              riskScore={dossier.risk_score}
+              riskLevel={dossier.risk_level}
+            />
 
             {/* Chronological Event Timeline */}
             <EventTimeline
@@ -165,6 +175,15 @@ export const AssetDetail: React.FC = () => {
       <footer className="border-t border-slate-850 py-4 mt-auto text-center text-xs text-slate-500 font-mono">
         PREVENT Decision-Support Platform • Asset Safety Dossier • Evaluated via Deterministic Scoring
       </footer>
+
+      {/* AI Safety Report Ingestion Modal (Asset Context) */}
+      <AddSafetyReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onEventIngested={() => fetchAssetData(true)}
+        initialAssetId={assetId}
+        availableAssetIds={assetId ? [assetId] : []}
+      />
     </div>
   );
 };

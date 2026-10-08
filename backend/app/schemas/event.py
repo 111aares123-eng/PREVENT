@@ -30,9 +30,9 @@ class Subsystem(str, Enum):
 
 class EventBase(BaseModel):
     asset_id: str = Field(..., description="Target asset ID, e.g. BUS-142")
-    timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        description="Occurrence timestamp in UTC"
+    timestamp: Optional[datetime] = Field(
+        default=None,
+        description="Occurrence timestamp in UTC. If omitted, defaults immediately after latest asset event."
     )
     event_type: EventType = Field(..., description="Classification of the event")
     subsystem: Subsystem = Field(..., description="Target vehicle subsystem")
@@ -60,6 +60,7 @@ class EventCreate(EventBase):
 
 class EventResponse(EventBase):
     id: str
+    timestamp: datetime
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -67,6 +68,7 @@ class EventResponse(EventBase):
 
 class EventExtractRequest(BaseModel):
     report_text: str = Field(..., min_length=3, max_length=10000, description="Raw unstructured safety report")
+    asset_id: Optional[str] = Field(default=None, description="Authoritative target asset ID if known/selected by operator")
 
 
 class ExtractedEventData(BaseModel):
