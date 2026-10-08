@@ -165,3 +165,56 @@ export interface SimulateSignalResponse {
   explanation_of_change: string;
   simulated_assessment: any;
 }
+
+export interface ExtractedEventData {
+  asset_id: string;
+  event_type: string;
+  subsystem: string;
+  severity: number;
+  description: string;
+  source: string;
+  reporter_role: string;
+  timestamp?: string | null;
+  location?: string | null;
+  raw_metadata?: Record<string, any> | null;
+}
+
+export interface EventExtractResponse {
+  extracted_event: ExtractedEventData | null;
+  provider: string;
+  validation_status: 'valid' | 'invalid';
+  validation_errors?: string[] | null;
+  raw_extraction?: Record<string, any> | null;
+}
+
+export interface EventCreateRequest {
+  asset_id: string;
+  timestamp?: string;
+  event_type: string;
+  subsystem: string;
+  severity: number;
+  description: string;
+  source: string;
+  reporter_role: string;
+  location?: string | null;
+  is_simulated?: boolean;
+  raw_metadata?: Record<string, any> | null;
+}
+
+export interface EventIngestionResponse {
+  event: TimelineEventItem;
+  asset_id: string;
+  previous_risk_score: number;
+  updated_risk_score: number;
+  risk_score_delta: number;
+  previous_risk_level: RiskLevel;
+  updated_risk_level: RiskLevel;
+  previous_confidence: number;
+  updated_confidence: number;
+  confidence_delta: number;
+  factor_breakdown: Record<string, number>;
+  factor_breakdown_delta: Record<string, number>;
+  explanation_narrative: string;
+  why_risk_changed: string[];
+}
+

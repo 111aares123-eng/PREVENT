@@ -5,13 +5,15 @@ import { Header } from '../components/layout/Header';
 import { FleetKpiCards } from '../components/dashboard/FleetKpiCards';
 import { RiskDistributionChart } from '../components/dashboard/RiskDistributionChart';
 import { AssetsTable } from '../components/dashboard/AssetsTable';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AddSafetyReportModal } from '../components/ingestion/AddSafetyReportModal';
+import { AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
   const [overview, setOverview] = useState<FleetOverviewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const fetchFleetData = async (refresh = false) => {
     if (refresh) setIsRefreshing(true);
@@ -37,7 +39,11 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
-      <Header onRefresh={() => fetchFleetData(true)} isRefreshing={isRefreshing} />
+      <Header
+        onRefresh={() => fetchFleetData(true)}
+        isRefreshing={isRefreshing}
+        onAddReport={() => setIsReportModalOpen(true)}
+      />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Error State */}
@@ -93,8 +99,17 @@ export const Dashboard: React.FC = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="text-right">
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="inline-flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white shadow-md shadow-orange-950/60 transition-all cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-orange-200" />
+                  <span>Add Safety Report</span>
+                </button>
+
+                <div className="text-right border-l border-slate-800 pl-4 hidden sm:block">
                   <span className="text-[10px] uppercase font-mono text-slate-500 block">
                     Last Evaluated
                   </span>
@@ -143,6 +158,14 @@ export const Dashboard: React.FC = () => {
       <footer className="border-t border-slate-850 py-4 mt-auto text-center text-xs text-slate-500 font-mono">
         PREVENT Decision-Support Platform • Enterprise Safety Intelligence • Not a predictive maintenance system
       </footer>
+
+      {/* AI Safety Report Ingestion Modal */}
+      <AddSafetyReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onEventIngested={() => fetchFleetData(true)}
+        availableAssetIds={overview?.assets.map((a) => a.asset_id) || []}
+      />
     </div>
   );
 };

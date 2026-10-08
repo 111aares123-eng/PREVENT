@@ -7,7 +7,10 @@ import type {
   AssetDetailResponse,
   AssetTimelineResponse,
   SimulateSignalRequest,
-  SimulateSignalResponse
+  SimulateSignalResponse,
+  EventExtractResponse,
+  EventCreateRequest,
+  EventIngestionResponse
 } from '../types/api';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -67,6 +70,18 @@ export const api = {
 
   simulateSignal: (payload: SimulateSignalRequest) =>
     request<SimulateSignalResponse>('/api/v1/simulation/simulate-signal', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  extractEvent: (reportText: string) =>
+    request<EventExtractResponse>('/api/v1/events/extract', {
+      method: 'POST',
+      body: JSON.stringify({ report_text: reportText }),
+    }),
+
+  ingestEvent: (payload: EventCreateRequest) =>
+    request<EventIngestionResponse>('/api/v1/events', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),

@@ -124,8 +124,81 @@ The dashboard will be available at:
 
 ### 4. Running Tests
 
-Run the backend verification suite (covers database models, risk algorithms, temporal analysis, and API endpoints):
+Run the backend verification suite (covers database models, risk algorithms, temporal analysis, API endpoints, and AI ingestion):
 
 ```bash
 python -m pytest -v
 ```
+
+---
+
+## AI Event Ingestion (Phase 1E)
+
+PREVENT includes an AI-powered ingestion layer that converts unstructured natural-language safety reports (driver shift reports, inspection findings, passenger complaints, near-misses) into PREVENT's structured Event schema.
+
+### Architectural Principle: Hybrid Intelligence
+
+PREVENT operates on a strict **Hybrid System** model:
+
+```text
+Raw safety report
+  ↓
+Gemini extraction (or Mock Provider)
+  ↓
+Pydantic validation
+  ↓
+Human verification & confirmation
+  ↓
+Event database persistence
+  ↓
+PREVENT deterministic risk engine
+  ↓
+Updated risk assessment & factor waterfall
+```
+
+- **LLM Role**: "Understand this human-written report and extract normalized structured fields."
+- **PREVENT Role**: "Connect this event with historical evidence and calculate explainable risk."
+- **Human Role**: "Review extracted data and decide what operational action to take."
+
+> [!IMPORTANT]
+> The LLM is used exclusively for event extraction and normalization. The LLM **never** determines or guesses the final safety score. PREVENT's deterministic mathematical risk engine remains the single source of truth for risk scoring and factor attribution.
+
+### Configuration & Environment Variables
+
+Environment variables are strictly separated between frontend and backend services:
+
+#### Frontend Configuration (`frontend/.env`)
+
+Copy `frontend/.env.example` to `frontend/.env`:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+> [!CAUTION]
+> The Gemini API key is backend-only and must never be placed in a `VITE_*` variable or frontend environment file. Frontend files are compiled and exposed directly to the browser.
+
+#### Backend Configuration (`backend/.env`)
+
+Copy `backend/.env.example` to `backend/.env`:
+
+```bash
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=YOUR_KEY_HERE
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+For offline development and automated testing without an API key, set `LLM_PROVIDER=mock`.
+
+| Variable | Default | Service | Description |
+| :--- | :--- | :--- | :--- |
+| `VITE_API_BASE_URL` | `http://localhost:8000` | Frontend | FastAPI backend base URL consumed by Vite client. |
+| `LLM_PROVIDER` | `gemini` | Backend | Extraction backend: `mock` (zero-friction offline testing) or `gemini` (Google GenAI). |
+| `GEMINI_API_KEY` | `None` | Backend | Google Gemini API key. Stored strictly on the backend. |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Backend | Gemini model used for structured JSON extraction. |
+
+### Providers
+
+1. **`MockProvider`**: Intelligent regex and heuristic extractor that enables full end-to-end development, testing, and CI/CD without an external API key or network access.
+2. **`GeminiProvider`**: Official Google GenAI SDK integration (`google-genai`) using structured JSON mode and temperature 0.1 for high-fidelity extraction.
+

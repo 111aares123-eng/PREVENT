@@ -5,9 +5,10 @@ import { ShieldAlert, RefreshCw, ArrowLeft } from 'lucide-react';
 interface HeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  onAddReport?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing = false }) => {
+export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing = false, onAddReport }) => {
   const location = useLocation();
   const isDetailPage = location.pathname.startsWith('/assets/');
 
@@ -45,6 +46,16 @@ export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing = false 
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Fleet Overview
               </Link>
+            )}
+
+            {onAddReport && (
+              <button
+                onClick={onAddReport}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-1.5 rounded-md bg-orange-600 hover:bg-orange-500 shadow-sm shadow-orange-950 transition-colors"
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-white" />
+                <span>Add Safety Report</span>
+              </button>
             )}
 
             <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-950/70 border border-slate-800 text-xs text-slate-300 font-mono">

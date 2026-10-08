@@ -4,9 +4,13 @@ Houses all configurable weights for risk scoring and confidence calculation,
 ensuring no hardcoded magic numbers exist across the platform.
 """
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+
 
 
 class RiskScoringWeights(BaseModel):
@@ -116,7 +120,16 @@ class Settings(BaseSettings):
     risk_weights: RiskScoringWeights = Field(default_factory=RiskScoringWeights)
     confidence_weights: ConfidenceScoringWeights = Field(default_factory=ConfidenceScoringWeights)
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # LLM Provider Configuration
+    LLM_PROVIDER: str = Field(default="mock", description="LLM provider: 'mock' or 'gemini'")
+    GEMINI_API_KEY: Optional[str] = Field(default=None, description="Google Gemini API key")
+    GEMINI_MODEL: str = Field(default="gemini-2.5-flash", description="Gemini model identifier for structured extraction")
+
+    model_config = SettingsConfigDict(
+        env_file=(str(BACKEND_DIR / ".env"), "backend/.env", ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
 
 settings = Settings()

@@ -3,6 +3,9 @@
 *.env
 .env.*
 !.env.example
+!frontend/.env.example
+!backend/.env.example
+!**/.env.example
 
 # Python
 __pycache__/
