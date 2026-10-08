@@ -37,6 +37,15 @@ export const Dashboard: React.FC = () => {
     fetchFleetData();
   }, []);
 
+  useEffect(() => {
+    if (window.location.hash === '#fleet-roster' && overview) {
+      const el = document.getElementById('fleet-roster');
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth' }), 100);
+      }
+    }
+  }, [overview]);
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans">
       <Header
@@ -120,23 +129,12 @@ export const Dashboard: React.FC = () => {
               </div>
             </section>
 
-            {/* Assets Requiring Immediate Attention */}
-            {overview.assets_requiring_attention.length > 0 && (
-              <section className="space-y-3">
-                <AssetsTable
-                  assets={overview.assets_requiring_attention}
-                  title="Assets Requiring Attention"
-                  subtitle="Units with converging warning signals or escalating safety patterns"
-                  highlightAttention={true}
-                />
-              </section>
-            )}
-
-            {/* Full Fleet Roster */}
+            {/* Full Fleet Roster & Operational Queue */}
             <section id="fleet-roster" className="space-y-3 pt-2">
               <AssetsTable
                 assets={overview.assets}
-                title="All Monitored Fleet Units"
+                attentionAssets={overview.assets_requiring_attention}
+                title="Fleet Safety Roster"
                 subtitle="Baseline operational status, deterministic risk rating, and primary subsystem"
               />
             </section>
@@ -145,7 +143,7 @@ export const Dashboard: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 py-6 mt-auto text-center text-xs text-slate-400 font-mono">
+      <footer className="border-t border-slate-200 py-6 mt-auto text-center text-xs text-slate-500 font-mono">
         PREVENT Decision-Support Platform • Deterministic Multi-Source Early Warning Intelligence
       </footer>
 

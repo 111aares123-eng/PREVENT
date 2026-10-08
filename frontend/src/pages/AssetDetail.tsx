@@ -168,7 +168,13 @@ export const AssetDetail: React.FC = () => {
               />
             )}
 
-            {/* 3. Risk Trajectory Chart */}
+            {/* 3. Prescriptive Recommended Action Banner */}
+            <RecommendedActionCard
+              recommendedAction={dossier.recommended_action}
+              riskLevel={dossier.risk_level}
+            />
+
+            {/* 4. Risk Trajectory Chart */}
             {(riskHistory || dossier.risk_history) && (
               <RiskTrajectoryChart
                 history={(riskHistory || dossier.risk_history)!}
@@ -177,7 +183,7 @@ export const AssetDetail: React.FC = () => {
               />
             )}
 
-            {/* 4. Factor Waterfall & Explanation Narrative */}
+            {/* 5. Factor Waterfall & Explanation Narrative */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-7">
                 <FactorWaterfall factorBreakdown={dossier.factor_breakdown} />
@@ -186,12 +192,6 @@ export const AssetDetail: React.FC = () => {
                 <ExplanationCard narrative={dossier.explanation_narrative} />
               </div>
             </div>
-
-            {/* 5. Prescriptive Recommended Action Banner */}
-            <RecommendedActionCard
-              recommendedAction={dossier.recommended_action}
-              riskLevel={dossier.risk_level}
-            />
 
             {/* 6. Chronological Event Timeline */}
             <EventTimeline
@@ -220,7 +220,7 @@ export const AssetDetail: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 py-4 mt-auto text-center text-xs text-slate-400 font-mono">
+      <footer className="border-t border-slate-200 py-4 mt-auto text-center text-xs text-slate-500 font-mono">
         PREVENT Decision-Support Platform • Asset Safety Dossier • Evaluated via Deterministic Scoring
       </footer>
 

@@ -38,7 +38,7 @@ export const WhyNowSection: React.FC<WhyNowSectionProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Numbered Evidence Signals List (Thin Dividers, NOT separate cards) */}
         <div className="lg:col-span-7 space-y-1">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-semibold mb-2">
             Convergent Evidence Pattern ({whyNow.signals.length} Signals)
           </div>
 
@@ -63,7 +63,7 @@ export const WhyNowSection: React.FC<WhyNowSectionProps> = ({
                   }`}
                 >
                   <div className="flex items-baseline gap-3 min-w-0">
-                    <span className="font-mono text-xs font-bold text-slate-400 shrink-0">
+                    <span className="font-mono text-xs font-bold text-slate-500 shrink-0">
                       {numStr}
                     </span>
                     <div className="min-w-0">
@@ -83,7 +83,7 @@ export const WhyNowSection: React.FC<WhyNowSectionProps> = ({
                   </div>
 
                   {signal.evidence_event_ids.length > 0 && (
-                    <div className="shrink-0 flex items-center gap-1 text-[11px] font-mono text-slate-400 group-hover:text-amber-700 transition-colors">
+                    <div className="shrink-0 flex items-center gap-1 text-[11px] font-mono text-slate-500 group-hover:text-amber-700 transition-colors">
                       <span className="hidden sm:inline">Highlight</span>
                       <ArrowUpRight className="w-3 h-3" />
                     </div>
@@ -93,7 +93,7 @@ export const WhyNowSection: React.FC<WhyNowSectionProps> = ({
             })}
           </div>
 
-          <p className="text-[11px] text-slate-400 pt-2 font-mono">
+          <p className="text-[11px] text-slate-500 pt-2 font-mono">
             Click any pattern to locate corresponding evidence in the map and timeline.
           </p>
         </div>
@@ -105,7 +105,7 @@ export const WhyNowSection: React.FC<WhyNowSectionProps> = ({
               <span className="font-mono font-bold uppercase tracking-wider text-slate-800">
                 Risk Contribution
               </span>
-              <span className="font-mono text-[10px] text-slate-400 uppercase">
+              <span className="font-mono text-[10px] text-slate-500 uppercase">
                 Points
               </span>
             </div>

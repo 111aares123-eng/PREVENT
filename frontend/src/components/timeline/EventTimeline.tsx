@@ -29,7 +29,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
           </p>
         </div>
 
-        <span className="text-xs font-mono text-slate-400">
+        <span className="text-xs font-mono text-slate-500">
           {sortedEvents.length} events logged
         </span>
       </div>
@@ -72,7 +72,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
               {/* Event Content Row */}
               <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 text-xs">
                 <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-slate-400 text-[11px] font-medium">
+                  <span className="font-mono text-slate-600 text-[11px] font-semibold">
                     {dateStr}
                   </span>
                   <span
@@ -82,7 +82,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
                   >
                     {ev.event_type.replace('_', ' ')}
                   </span>
-                  <span className="text-[11px] text-slate-400 font-mono">
+                  <span className="text-[11px] text-slate-500 font-mono">
                     · {ev.reporter_role}
                   </span>
                 </div>
@@ -99,7 +99,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
                   >
                     Sev {ev.severity}
                   </span>
-                  <span className="text-slate-400 hidden sm:inline">{timeStr}</span>
+                  <span className="text-slate-500 hidden sm:inline">{timeStr}</span>
                 </div>
               </div>
 
@@ -108,7 +108,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
                 {ev.description}
               </p>
               {ev.location && (
-                <span className="text-[11px] font-mono text-slate-400 block mt-0.5">
+                <span className="text-[11px] font-mono text-slate-500 block mt-0.5">
                   Location: {ev.location}
                 </span>
               )}

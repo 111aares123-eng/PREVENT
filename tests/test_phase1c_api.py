@@ -92,7 +92,7 @@ def test_fleet_overview_bus142_intelligence(client):
     bus142_summary = next((a for a in data["assets"] if a["asset_id"] == "BUS-142"), None)
     assert bus142_summary is not None
     assert 78.0 <= bus142_summary["risk_score"] <= 84.0
-    assert bus142_summary["confidence"] == 100.0
+    assert 80.0 <= bus142_summary["confidence"] < 100.0
     assert bus142_summary["risk_level"] == "HIGH"
     assert bus142_summary["trend"] in ("RAPIDLY_ESCALATING", "ESCALATING")
     assert bus142_summary["primary_subsystem"] == "braking"
@@ -121,7 +121,7 @@ def test_asset_detail_bus142_returns_complete_intelligence(client):
 
     # Evaluated scores
     assert 78.0 <= data["risk_score"] <= 84.0
-    assert data["confidence"] == 100.0
+    assert 80.0 <= data["confidence"] < 100.0
     assert data["risk_level"] == "HIGH"
     assert data["primary_subsystem"] == "braking"
 

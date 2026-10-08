@@ -21,7 +21,7 @@ export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing = false,
             <span className="text-base font-bold tracking-tight text-slate-900">
               PREVENT
             </span>
-            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500">
               Safety Intelligence
             </span>
           </Link>
@@ -36,12 +36,21 @@ export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing = false,
             >
               Overview
             </Link>
-            <a
-              href="#fleet-roster"
+            <Link
+              to="/#fleet-roster"
+              onClick={(e) => {
+                if (location.pathname === '/' || location.pathname === '/dashboard') {
+                  const el = document.getElementById('fleet-roster');
+                  if (el) {
+                    e.preventDefault();
+                    el.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }
+              }}
               className="transition-colors hover:text-slate-900"
             >
               Assets
-            </a>
+            </Link>
             <button
               type="button"
               onClick={onAddReport}

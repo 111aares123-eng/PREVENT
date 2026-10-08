@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Layers,
   Zap,
@@ -77,7 +77,49 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
 }) => {
   const [selectedNode, setSelectedNode] = useState<EvidenceGraphNode | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'map' | 'matrix'>('map');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      return Math.min(1160, Math.max(880, window.innerWidth - 64));
+    }
+    return 1100;
+  });
+
+  // Responsive default view mode: on viewports below 1024px, default to Matrix View
+  const [viewMode, setViewMode] = useState<'map' | 'matrix'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      return 'matrix';
+    }
+    return 'map';
+  });
+
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        const clientWidth = containerRef.current.clientWidth;
+        if (clientWidth > 0) {
+          setContainerWidth(clientWidth);
+        }
+      }
+    };
+
+    updateWidth();
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      ro = new ResizeObserver(() => {
+        updateWidth();
+      });
+      ro.observe(containerRef.current);
+    } else {
+      window.addEventListener('resize', updateWidth);
+    }
+
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', updateWidth);
+    };
+  }, []);
 
   // Filter nodes by type
   const assetNodes = useMemo(
@@ -116,15 +158,22 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
   // Compute node layouts and positions
   const { layoutMap, canvasWidth, canvasHeight } = useMemo(() => {
     const map = new Map<string, NodeLayout>();
-    const maxInRow = Math.max(1, eventNodes.length, factorNodes.length);
-    const cardWidthEvent = 172;
-    const cardWidthFactor = 172;
-    const computedWidth = Math.max(1050, maxInRow * 195 + 80);
+
+    // Dynamically scale width to available container width minus padding (32px for p-4)
+    // Cleanly adapts between 880px and 1180px
+    const availableWidth = Math.max(880, containerWidth - 32);
+    const computedWidth = Math.min(1180, availableWidth);
     const computedHeight = 650;
+
+    // Dynamically adjust card widths and horizontal padding based on computed width
+    const isCompact = computedWidth < 1050;
+    const cardWidthEvent = isCompact ? 152 : 172;
+    const cardWidthFactor = isCompact ? 152 : 172;
+    const pad = isCompact ? 24 : 40;
 
     // Tier 0: Asset
     const assetY = 32;
-    const assetW = 230;
+    const assetW = isCompact ? 200 : 230;
     const assetH = 58;
     assetNodes.forEach((node, i) => {
       const cx =
@@ -145,7 +194,7 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
 
     // Tier 1: Subsystem
     const subY = 146;
-    const subW = 230;
+    const subW = isCompact ? 200 : 230;
     const subH = 58;
     subsystemNodes.forEach((node, i) => {
       const cx =
@@ -167,7 +216,6 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
     // Tier 2: Events (Distributed horizontally)
     const eventY = 268;
     const eventH = 86;
-    const pad = 40;
     eventNodes.forEach((node, i) => {
       let cx: number;
       let left: number;
@@ -218,7 +266,7 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
     });
 
     return { layoutMap: map, canvasWidth: computedWidth, canvasHeight: computedHeight };
-  }, [assetNodes, subsystemNodes, eventNodes, factorNodes]);
+  }, [assetNodes, subsystemNodes, eventNodes, factorNodes, containerWidth]);
 
   // Find connected neighbors and edges for the currently hovered node
   const { connectedEdgeIndices, connectedNeighborNodeIds } = useMemo(() => {
@@ -305,28 +353,31 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
       {viewMode === 'map' ? (
         <div className="space-y-3">
           {/* Minimal helper line */}
-          <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+          <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 px-1">
             <span>Hover node to trace relationships · Click to inspect metadata</span>
             {selectedNode && (
               <button
                 type="button"
                 onClick={() => setSelectedNode(null)}
-                className="text-slate-500 hover:text-slate-900 underline font-mono cursor-pointer"
+                className="text-slate-600 hover:text-slate-900 underline font-mono cursor-pointer"
               >
                 Reset Selection
               </button>
             )}
           </div>
 
-          {/* Canvas container */}
-          <div className="overflow-x-auto overflow-y-hidden rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+          {/* Canvas container with responsive width measurement */}
+          <div
+            ref={containerRef}
+            className="overflow-x-auto overflow-y-hidden rounded-lg border border-slate-200 bg-slate-50/70 p-4"
+          >
             <div
               className="relative mx-auto"
               style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px` }}
             >
               {/* SVG Layer: Renders all 15 dynamic edges + convergence paths */}
               <svg
-                className="absolute inset-0 pointer-events-none"
+                className="absolute inset-0 pointer-events-none w-full h-full"
                 width={canvasWidth}
                 height={canvasHeight}
                 viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}

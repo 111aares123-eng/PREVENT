@@ -5,6 +5,7 @@ import type { FleetAssetSummary } from '../../types/api';
 
 interface AssetsTableProps {
   assets: FleetAssetSummary[];
+  attentionAssets?: FleetAssetSummary[];
   title?: string;
   subtitle?: string;
   highlightAttention?: boolean;
@@ -12,6 +13,7 @@ interface AssetsTableProps {
 
 export const AssetsTable: React.FC<AssetsTableProps> = ({
   assets,
+  attentionAssets,
   title = 'MONITORED FLEET ASSETS',
   subtitle,
   highlightAttention = false,
@@ -20,6 +22,9 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({
   const [filterLevel, setFilterLevel] = useState<string>('ALL');
 
   const filteredAssets = assets.filter((a) => {
+    if (filterLevel === 'ATTENTION') {
+      return a.risk_level === 'HIGH' || a.risk_level === 'CRITICAL';
+    }
     if (highlightAttention && a.risk_level === 'LOW') return false;
     if (filterLevel === 'ALL') return true;
     return a.risk_level === filterLevel;
@@ -79,7 +84,21 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({
         </div>
 
         {/* Minimal filter tabs */}
-        <div className="flex items-center gap-1 text-xs">
+        <div className="flex items-center gap-1.5 text-xs">
+          {attentionAssets && attentionAssets.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setFilterLevel(filterLevel === 'ATTENTION' ? 'ALL' : 'ATTENTION')}
+              className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer flex items-center gap-1.5 ${
+                filterLevel === 'ATTENTION'
+                  ? 'bg-rose-700 text-white font-semibold shadow-xs'
+                  : 'text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+              <span>ATTENTION ({attentionAssets.length})</span>
+            </button>
+          )}
           {['ALL', 'HIGH', 'MEDIUM', 'LOW'].map((level) => (
             <button
               key={level}
@@ -113,7 +132,7 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({
           <tbody className="divide-y divide-slate-100">
             {filteredAssets.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-slate-400 font-mono text-xs">
+                <td colSpan={6} className="py-8 text-center text-slate-500 font-mono text-xs">
                   No assets found for filter criteria.
                 </td>
               </tr>
@@ -170,7 +189,7 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({
                     </td>
 
                     {/* LAST SIGNAL */}
-                    <td className="py-3 px-4 font-mono text-[11px] text-slate-500">
+                    <td className="py-3 px-4 font-mono text-[11px] text-slate-600">
                       {formattedDate}
                     </td>
 
@@ -178,7 +197,7 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({
                     <td className="py-3 px-4 text-right">
                       <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 group-hover:text-amber-700 transition-colors">
                         <span>Dossier</span>
-                        <ArrowUpRight className="w-3 h-3 text-slate-400 group-hover:text-amber-700" />
+                        <ArrowUpRight className="w-3 h-3 text-slate-500 group-hover:text-amber-700" />
                       </span>
                     </td>
                   </tr>

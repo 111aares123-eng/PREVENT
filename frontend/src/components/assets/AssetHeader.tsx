@@ -62,19 +62,19 @@ export const AssetHeader: React.FC<AssetHeaderProps> = ({
         {/* Right: Key Safety Metrics Bar (Clean, Non-Card Strip) */}
         <div className="flex flex-wrap items-baseline gap-6 sm:gap-8 font-mono border-t lg:border-t-0 pt-4 lg:pt-0 border-slate-100">
           <div>
-            <span className="block text-[10px] uppercase font-sans tracking-wider text-slate-400 font-semibold">
+            <span className="block text-[10px] uppercase font-sans tracking-wider text-slate-500 font-semibold">
               Risk Score
             </span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className={`text-4xl font-extrabold ${riskColor}`}>
                 {Math.round(riskScore)}
               </span>
-              <span className="text-xs text-slate-400 font-sans">/ 100</span>
+              <span className="text-xs text-slate-500 font-sans">/ 100</span>
             </div>
           </div>
 
           <div className="border-l border-slate-200 pl-6 sm:pl-8">
-            <span className="block text-[10px] uppercase font-sans tracking-wider text-slate-400 font-semibold">
+            <span className="block text-[10px] uppercase font-sans tracking-wider text-slate-500 font-semibold">
               Assessment
             </span>
             <div className="mt-0.5">
@@ -88,25 +88,25 @@ export const AssetHeader: React.FC<AssetHeaderProps> = ({
           </div>
 
           <div className="border-l border-slate-200 pl-6 sm:pl-8">
-            <span className="block text-[10px] uppercase font-sans tracking-wider text-slate-400 font-semibold">
+            <span className="block text-[10px] uppercase font-sans tracking-wider text-slate-500 font-semibold">
               Focus Subsystem
             </span>
             <span className="text-sm font-bold text-slate-800 uppercase block mt-0.5">
               {primarySubsystem.replace('_', ' ')}
             </span>
-            <span className="text-[11px] text-slate-500 font-sans block">
+            <span className="text-[11px] text-slate-600 font-sans block">
               Primary Convergence
             </span>
           </div>
 
           <div className="border-l border-slate-200 pl-6 sm:pl-8">
-            <span className="block text-[10px] uppercase font-sans tracking-wider text-slate-400 font-semibold">
+            <span className="block text-[10px] uppercase font-sans tracking-wider text-slate-500 font-semibold">
               Evidence Confidence
             </span>
             <span className="text-sm font-bold text-slate-900 block mt-0.5">
               {Math.round(confidence)}%
             </span>
-            <span className="text-[11px] text-slate-500 font-sans block">
+            <span className="text-[11px] text-slate-600 font-sans block">
               Corroborated
             </span>
           </div>

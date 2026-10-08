@@ -15,28 +15,28 @@ export const RiskBadge: React.FC<RiskBadgeProps> = ({
 }) => {
   const styles: Record<RiskLevel, { bg: string; text: string; border: string; icon: React.ReactNode }> = {
     CRITICAL: {
-      bg: 'bg-red-950/60',
-      text: 'text-red-400',
-      border: 'border-red-600/50',
-      icon: <AlertOctagon className="w-3.5 h-3.5 text-red-400" />,
+      bg: 'bg-red-50',
+      text: 'text-red-700',
+      border: 'border-red-200',
+      icon: <AlertOctagon className="w-3.5 h-3.5 text-red-600" />,
     },
     HIGH: {
-      bg: 'bg-orange-950/60',
-      text: 'text-orange-400',
-      border: 'border-orange-500/50',
-      icon: <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />,
+      bg: 'bg-red-50',
+      text: 'text-red-700',
+      border: 'border-red-200',
+      icon: <AlertTriangle className="w-3.5 h-3.5 text-red-600" />,
     },
     MEDIUM: {
-      bg: 'bg-amber-950/60',
-      text: 'text-amber-400',
-      border: 'border-amber-500/50',
-      icon: <Info className="w-3.5 h-3.5 text-amber-400" />,
+      bg: 'bg-amber-50',
+      text: 'text-amber-700',
+      border: 'border-amber-200',
+      icon: <Info className="w-3.5 h-3.5 text-amber-600" />,
     },
     LOW: {
-      bg: 'bg-emerald-950/60',
-      text: 'text-emerald-400',
-      border: 'border-emerald-500/50',
-      icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />,
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-700',
+      border: 'border-emerald-200',
+      icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />,
     },
   };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, ArrowRight, ArrowDownRight, Flame } from 'lucide-react';
+import { TrendingUp, ArrowUpRight, ArrowRight, ArrowDownRight } from 'lucide-react';
 import type { TrendDirection } from '../../types/api';
 
 interface TrendBadgeProps {
@@ -11,23 +11,23 @@ export const TrendBadge: React.FC<TrendBadgeProps> = ({ trend, size = 'md' }) =>
   const configs: Record<TrendDirection, { text: string; color: string; icon: React.ReactNode }> = {
     RAPIDLY_ESCALATING: {
       text: 'RAPIDLY ESCALATING',
-      color: 'text-red-400 bg-red-950/40 border-red-700/50',
-      icon: <Flame className="w-3.5 h-3.5 text-red-400 animate-pulse" />,
+      color: 'text-red-700 bg-red-50 border-red-200',
+      icon: <TrendingUp className="w-3.5 h-3.5 text-red-600" />,
     },
     ESCALATING: {
       text: 'ESCALATING',
-      color: 'text-orange-400 bg-orange-950/40 border-orange-700/50',
-      icon: <ArrowUpRight className="w-3.5 h-3.5 text-orange-400" />,
+      color: 'text-amber-700 bg-amber-50 border-amber-200',
+      icon: <ArrowUpRight className="w-3.5 h-3.5 text-amber-600" />,
     },
     STABLE: {
       text: 'STABLE',
-      color: 'text-slate-300 bg-slate-800/60 border-slate-700/50',
-      icon: <ArrowRight className="w-3.5 h-3.5 text-slate-400" />,
+      color: 'text-slate-700 bg-slate-100 border-slate-200',
+      icon: <ArrowRight className="w-3.5 h-3.5 text-slate-500" />,
     },
     IMPROVING: {
       text: 'IMPROVING',
-      color: 'text-emerald-400 bg-emerald-950/40 border-emerald-700/50',
-      icon: <ArrowDownRight className="w-3.5 h-3.5 text-emerald-400" />,
+      color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+      icon: <ArrowDownRight className="w-3.5 h-3.5 text-emerald-600" />,
     },
   };
 
