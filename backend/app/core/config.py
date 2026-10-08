@@ -133,8 +133,9 @@ class Settings(BaseSettings):
     # Database URL: default to SQLite for zero-friction local development
     DATABASE_URL: str = "sqlite:///./prevent.db"
     
-    # Reference anchor time for deterministic evaluation of synthetic datasets.
-    # If None, the engine defaults to the latest event timestamp in the fleet.
+    # Reference instant of the bundled seed scenarios (the moment their timelines treat as "now").
+    # The risk engine itself always evaluates on the live UTC clock and never reads this value;
+    # the seed script uses it to shift scenario timestamps onto today (see data/scenarios/seed_data.py).
     DEFAULT_ANCHOR_TIME: Optional[str] = "2026-09-17T18:00:00Z"
     
     # CORS allowed origins for local development (e.g. React / Vite)

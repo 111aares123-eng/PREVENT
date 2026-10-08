@@ -6,7 +6,7 @@ including the BUS-142 escalating brake failure scenario and baseline fleet noise
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Any
 
@@ -15,6 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from backend.app.core.config import settings
 from backend.app.db.base import Base
 from backend.app.db.session import engine, SessionLocal
 from backend.app.models.asset import Asset
@@ -30,11 +31,22 @@ def parse_datetime(dt_str: str) -> datetime:
     return dt
 
 
-def seed_database(reset: bool = True) -> Dict[str, Any]:
+def seed_database(reset: bool = True, rebase_to_now: bool = True) -> Dict[str, Any]:
     """
     Creates tables if they do not exist and populates initial seed data.
     If reset=True, purges existing assets, events, and assessments first.
+
+    The risk engine evaluates on the live UTC clock with a rolling analysis window, while the
+    scenario files carry fixed September 2026 dates. If rebase_to_now=True (default), every
+    scenario timestamp is shifted by one constant offset so that the scenario reference instant
+    (settings.DEFAULT_ANCHOR_TIME) maps to the current UTC time. Relative spacing between events
+    is preserved exactly, so the seeded story scores the same on any calendar date.
+    Pass rebase_to_now=False to keep the original scenario timestamps.
     """
+    time_shift = timedelta(0)
+    if rebase_to_now and settings.DEFAULT_ANCHOR_TIME:
+        time_shift = datetime.now(timezone.utc) - parse_datetime(settings.DEFAULT_ANCHOR_TIME)
+
     Base.metadata.create_all(bind=engine)
     session = SessionLocal()
 
@@ -76,7 +88,7 @@ def seed_database(reset: bool = True) -> Dict[str, Any]:
         for e_data in all_events:
             event = Event(
                 asset_id=e_data["asset_id"],
-                timestamp=parse_datetime(e_data["timestamp"]),
+                timestamp=parse_datetime(e_data["timestamp"]) + time_shift,
                 event_type=e_data["event_type"],
                 subsystem=e_data["subsystem"],
                 severity=e_data["severity"],
@@ -101,6 +113,8 @@ def seed_database(reset: bool = True) -> Dict[str, Any]:
             "total_assets": total_assets,
             "total_events": total_events,
             "bus142_events": bus142_events,
+            "rebased_to_now": time_shift != timedelta(0),
+            "time_shift_days": round(time_shift.total_seconds() / 86400.0, 2),
             "assets_seeded": [a["asset_id"] for a in all_assets]
         }
         return summary
@@ -113,7 +127,8 @@ def seed_database(reset: bool = True) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    result = seed_database(reset=True)
+    # Default: rebase scenario dates onto today. Pass --frozen to keep the original scenario timestamps.
+    result = seed_database(reset=True, rebase_to_now="--frozen" not in sys.argv)
     print("=" * 60)
     print("PREVENT DATABASE SEEDING COMPLETED")
     print("=" * 60)
@@ -121,4 +136,8 @@ if __name__ == "__main__":
     print(f"Total Events Created: {result['total_events']}")
     print(f"BUS-142 Escalating Events: {result['bus142_events']}")
     print(f"Monitored Fleet Assets: {', '.join(result['assets_seeded'])}")
+    if result["rebased_to_now"]:
+        print(f"Timestamps rebased to today (shift: {result['time_shift_days']} days). Re-run before a demo to keep them fresh.")
+    else:
+        print("Timestamps kept at original scenario dates (--frozen).")
     print("=" * 60)

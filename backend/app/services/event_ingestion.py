@@ -7,7 +7,7 @@ Coordinates:
 4. Recalculation of asset risk via PREVENT's deterministic RiskEngine
 """
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -193,23 +193,14 @@ class EventIngestionService:
         # 1. Evaluate baseline risk before adding new event
         previous_assessment = risk_engine.evaluate_asset(asset, asset.events)
 
-        # Determine effective event timestamp (if not supplied, place immediately after latest asset event)
+        # Determine effective event timestamp (if not supplied, the report is stamped with current UTC,
+        # the same clock the risk engine evaluates on and the same value the UI form sends)
         if event_in.timestamp is not None:
             effective_timestamp = event_in.timestamp
             if effective_timestamp.tzinfo is None:
                 effective_timestamp = effective_timestamp.replace(tzinfo=timezone.utc)
         else:
-            if asset.events:
-                valid_times = [e.timestamp for e in asset.events if e.timestamp]
-                if valid_times:
-                    latest_t = max(valid_times)
-                    if latest_t.tzinfo is None:
-                        latest_t = latest_t.replace(tzinfo=timezone.utc)
-                    effective_timestamp = latest_t + timedelta(hours=1)
-                else:
-                    effective_timestamp = datetime.now(timezone.utc)
-            else:
-                effective_timestamp = datetime.now(timezone.utc)
+            effective_timestamp = datetime.now(timezone.utc)
 
         # 2. Persist new Event to database
         db_event = Event(

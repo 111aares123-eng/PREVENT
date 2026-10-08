@@ -405,7 +405,7 @@ def test_what_if_simulation_does_not_modify_database(db_session, risk_engine):
     hypothetical = Event(
         id="hypo-1",
         asset_id="BUS-091",
-        timestamp=datetime(2026, 9, 17, 14, 0, 0, tzinfo=timezone.utc),
+        timestamp=datetime.now(timezone.utc),  # "now", so the test holds on any calendar date
         event_type="near_miss",
         subsystem="doors_body",
         severity=5,

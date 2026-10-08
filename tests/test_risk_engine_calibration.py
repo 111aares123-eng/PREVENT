@@ -348,6 +348,8 @@ def test_case_i_explicit_historical_evaluation_time(db_session, risk_engine):
     Explicit historical evaluation_time:
     Expected: Deterministic, repeatable score evaluated at that exact reference point.
     """
+    # Historical replay needs the original scenario dates, not the default rebased-to-today seed
+    seed_database(reset=True, rebase_to_now=False)
     bus142 = db_session.query(Asset).filter(Asset.asset_id == "BUS-142").first()
     anchor = datetime(2026, 9, 17, 18, 0, 0, tzinfo=timezone.utc)
 

@@ -98,6 +98,15 @@ From the project root:
 python -m data.scenarios.seed_data
 ```
 
+The risk engine evaluates on the live UTC clock and only looks back 30 days, while the scenario
+files carry fixed September 2026 dates. The seed script therefore shifts every scenario date so the
+story ends "today" (spacing between events is preserved exactly, so the scores are unchanged).
+**Re-run this command before a demo**: 30 days after seeding, the seeded events leave the window
+and every asset reads 0. Use `python -m data.scenarios.seed_data --frozen` to keep the original dates.
+
+The test suite uses its own database file (`prevent_test.db`), so running `pytest` never touches
+the demo database.
+
 ### 2. Running the Backend
 
 ```bash
