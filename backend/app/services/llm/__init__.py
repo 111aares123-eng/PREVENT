@@ -17,6 +17,14 @@ from backend.app.services.llm.mock_provider import MockProvider
 from backend.app.services.llm.gemini_provider import GeminiProvider
 from backend.app.services.llm.groq_provider import GroqProvider
 from backend.app.services.llm.provider_router import ProviderRouter
+from backend.app.services.llm.audio_transcriber import (
+    AudioTranscriber,
+    GroqAudioTranscriber,
+    GeminiAudioTranscriber,
+    MockAudioTranscriber,
+    AudioTranscriptionRouter,
+    get_audio_transcriber,
+)
 
 
 def get_llm_provider(provider_type: Optional[str] = None) -> LLMProvider:
@@ -51,5 +59,11 @@ __all__ = [
     "GeminiProvider",
     "MockProvider",
     "ProviderRouter",
-    "get_llm_provider"
+    "get_llm_provider",
+    "AudioTranscriber",
+    "GroqAudioTranscriber",
+    "GeminiAudioTranscriber",
+    "MockAudioTranscriber",
+    "AudioTranscriptionRouter",
+    "get_audio_transcriber",
 ]

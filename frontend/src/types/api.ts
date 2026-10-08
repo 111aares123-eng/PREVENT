@@ -214,6 +214,17 @@ export interface SimulateSignalResponse {
   simulated_assessment: any;
 }
 
+export interface EventMetadata {
+  weather?: string;
+  source?: string;
+  audio_transcribed?: boolean;
+  transcript?: string;
+  detected_language?: string;
+  transcription_provider?: string;
+  original_text?: string;
+  [key: string]: any;
+}
+
 export interface ExtractedEventData {
   asset_id: string;
   event_type: string;
@@ -224,7 +235,7 @@ export interface ExtractedEventData {
   reporter_role: string;
   timestamp?: string | null;
   location?: string | null;
-  raw_metadata?: Record<string, any> | null;
+  raw_metadata?: EventMetadata | Record<string, any> | null;
 }
 
 export interface EventExtractRequest {

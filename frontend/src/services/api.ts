@@ -28,13 +28,20 @@ class ApiError extends Error {
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
+  const isFormData = typeof FormData !== 'undefined' && options?.body instanceof FormData;
+  const headers: Record<string, string> = {};
+
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
+  if (options?.headers) {
+    Object.assign(headers, options.headers);
+  }
+
   try {
     const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
       ...options,
+      headers,
     });
 
     if (!response.ok) {
@@ -90,6 +97,18 @@ export const api = {
         ...(assetId ? { asset_id: assetId.trim().toUpperCase() } : {}),
       }),
     }),
+
+  extractEventFromAudio: (audioBlob: Blob, filename = 'voice_report.webm', assetId?: string | null) => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, filename);
+    if (assetId && assetId.trim()) {
+      formData.append('asset_id', assetId.trim().toUpperCase());
+    }
+    return request<EventExtractResponse>('/api/v1/events/extract-audio', {
+      method: 'POST',
+      body: formData,
+    });
+  },
 
   ingestEvent: (payload: EventCreateRequest) =>
     request<EventIngestionResponse>('/api/v1/events', {

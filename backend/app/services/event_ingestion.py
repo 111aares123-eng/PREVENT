@@ -28,7 +28,9 @@ from backend.app.services.llm import (
     LLMProvider,
     MockProvider,
     get_llm_provider,
-    is_temporary_availability_error
+    is_temporary_availability_error,
+    AudioTranscriber,
+    get_audio_transcriber,
 )
 from backend.app.services.risk_engine import RiskEngine
 
@@ -36,12 +38,21 @@ from backend.app.services.risk_engine import RiskEngine
 class EventIngestionService:
     """Coordinates structured AI extraction, validation, and confirmed event persistence."""
 
-    def __init__(self, default_provider: Optional[LLMProvider] = None):
+    def __init__(
+        self,
+        default_provider: Optional[LLMProvider] = None,
+        default_transcriber: Optional[AudioTranscriber] = None
+    ):
         self._default_provider = default_provider
+        self._default_transcriber = default_transcriber
 
     def get_provider(self) -> LLMProvider:
         """Resolve LLM provider."""
         return self._default_provider or get_llm_provider()
+
+    def get_transcriber(self) -> AudioTranscriber:
+        """Resolve Audio transcriber."""
+        return self._default_transcriber or get_audio_transcriber()
 
     def extract_from_report(
         self,
@@ -172,6 +183,128 @@ class EventIngestionService:
             fallback_used=fallback_used,
             fallback_message=fallback_message
         )
+
+    def extract_from_audio(
+        self,
+        audio_bytes: bytes,
+        filename: Optional[str] = None,
+        content_type: Optional[str] = None,
+        asset_id: Optional[str] = None,
+        db: Optional[Session] = None,
+        transcriber: Optional[AudioTranscriber] = None,
+        provider: Optional[LLMProvider] = None
+    ) -> EventExtractResponse:
+        """
+        Transcribes audio report and routes the transcript into PREVENT's
+        existing multilingual extraction pipeline. Does NOT mutate the database.
+        Preserves audio metadata (source='audio/voice', transcript, detected_language) in raw_metadata.
+        """
+        try:
+            active_transcriber = transcriber or self.get_transcriber()
+            transcriber_name = active_transcriber.provider_name
+        except Exception as exc:
+            return EventExtractResponse(
+                extracted_event=None,
+                provider=getattr(settings, "LLM_PRIMARY", "groq"),
+                validation_status="invalid",
+                validation_errors=[f"Audio transcription service unavailable: {str(exc)}"],
+                raw_extraction=None,
+                fallback_used=False,
+                fallback_message=None
+            )
+
+        fallback_used = False
+        fallback_message: Optional[str] = None
+
+        try:
+            if hasattr(active_transcriber, "transcribe_with_fallback"):
+                trans_result, fallback_used, fallback_message = active_transcriber.transcribe_with_fallback(
+                    audio_bytes=audio_bytes,
+                    filename=filename,
+                    content_type=content_type
+                )
+            else:
+                trans_result = active_transcriber.transcribe(
+                    audio_bytes=audio_bytes,
+                    filename=filename,
+                    content_type=content_type
+                )
+        except Exception as exc:
+            return EventExtractResponse(
+                extracted_event=None,
+                provider=transcriber_name,
+                validation_status="invalid",
+                validation_errors=[f"Audio transcription failed: {str(exc)}"],
+                raw_extraction=None,
+                fallback_used=False,
+                fallback_message=None
+            )
+
+        if not isinstance(trans_result, dict):
+            return EventExtractResponse(
+                extracted_event=None,
+                provider=transcriber_name,
+                validation_status="invalid",
+                validation_errors=["Transcriber returned non-dictionary output."],
+                raw_extraction=None,
+                fallback_used=fallback_used,
+                fallback_message=fallback_message
+            )
+
+        transcript = (trans_result.get("transcript") or "").strip()
+        if not transcript:
+            return EventExtractResponse(
+                extracted_event=None,
+                provider=trans_result.get("provider", transcriber_name),
+                validation_status="invalid",
+                validation_errors=["Transcribed audio yielded no speech or text."],
+                raw_extraction=None,
+                fallback_used=fallback_used,
+                fallback_message=fallback_message
+            )
+
+        # Pass transcript directly into the existing multilingual extraction pipeline
+        extract_res = self.extract_from_report(
+            report_text=transcript,
+            asset_id=asset_id,
+            db=db,
+            provider=provider
+        )
+
+        # Merge transcription fallback status if transcription used fallback
+        if fallback_used:
+            extract_res.fallback_used = True
+            if fallback_message:
+                extract_res.fallback_message = (
+                    f"{fallback_message} | {extract_res.fallback_message}"
+                    if extract_res.fallback_message
+                    else fallback_message
+                )
+
+        # Preserve audio metadata in raw_metadata
+        if extract_res.extracted_event is not None:
+            meta = dict(extract_res.extracted_event.raw_metadata or {})
+            meta["source"] = "audio/voice"
+            meta["audio_transcribed"] = True
+            meta["transcript"] = transcript
+            if trans_result.get("provider"):
+                meta["transcription_provider"] = trans_result["provider"]
+            if trans_result.get("detected_language") and "detected_language" not in meta:
+                meta["detected_language"] = trans_result["detected_language"]
+            extract_res.extracted_event.raw_metadata = meta
+
+        if extract_res.raw_extraction and isinstance(extract_res.raw_extraction, dict):
+            raw_meta = dict(extract_res.raw_extraction.get("raw_metadata") or {})
+            raw_meta["source"] = "audio/voice"
+            raw_meta["audio_transcribed"] = True
+            raw_meta["transcript"] = transcript
+            if trans_result.get("provider"):
+                raw_meta["transcription_provider"] = trans_result["provider"]
+            if trans_result.get("detected_language") and "detected_language" not in raw_meta:
+                raw_meta["detected_language"] = trans_result["detected_language"]
+            extract_res.raw_extraction["raw_metadata"] = raw_meta
+
+        return extract_res
 
     def ingest_confirmed_event(
         self,

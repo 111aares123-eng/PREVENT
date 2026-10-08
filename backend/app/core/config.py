@@ -177,10 +177,12 @@ class Settings(BaseSettings):
     # Groq Configuration
     GROQ_API_KEY: Optional[str] = Field(default=None, description="Groq API key")
     GROQ_MODEL: str = Field(default="openai/gpt-oss-20b", description="Groq model identifier")
+    GROQ_AUDIO_MODEL: str = Field(default="whisper-large-v3", description="Groq Whisper model for audio transcription")
 
     # Gemini Configuration
     GEMINI_API_KEY: Optional[str] = Field(default=None, description="Google Gemini API key")
     GEMINI_MODEL: str = Field(default="gemini-2.5-flash", description="Gemini model identifier for structured extraction")
+    GEMINI_AUDIO_MODEL: str = Field(default="gemini-2.5-flash", description="Gemini model for multimodal audio transcription")
 
     model_config = SettingsConfigDict(
         env_file=(str(BACKEND_DIR / ".env"), "backend/.env", ".env"),

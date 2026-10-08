@@ -172,6 +172,9 @@ export const AssetDetail: React.FC = () => {
             <RecommendedActionCard
               recommendedAction={dossier.recommended_action}
               riskLevel={dossier.risk_level}
+              primarySubsystem={dossier.primary_subsystem}
+              assetId={dossier.asset.asset_id}
+              whyNowSummary={(whyNow || dossier.why_now)?.summary}
             />
 
             {/* 4. Risk Trajectory Chart */}

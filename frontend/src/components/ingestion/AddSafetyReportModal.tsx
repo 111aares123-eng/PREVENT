@@ -13,13 +13,20 @@ import {
   TrendingUp,
   ShieldCheck,
   RotateCcw,
-  Clock
+  Clock,
+  Mic,
+  FileText,
+  Globe
 } from 'lucide-react';
 import { api } from '../../services/api';
 import type {
   EventIngestionResponse,
-  EventCreateRequest
+  EventCreateRequest,
+  EventExtractResponse,
+  EventMetadata
 } from '../../types/api';
+import { AudioRecorder } from './AudioRecorder';
+import { RecommendedActionCard } from '../assets/RecommendedActionCard';
 
 interface AddSafetyReportModalProps {
   isOpen: boolean;
@@ -31,18 +38,47 @@ interface AddSafetyReportModalProps {
 
 const SAMPLE_REPORTS = [
   {
-    label: 'BUS-142 Brake Shudder',
+    label: 'BUS-142 Brake Shudder (EN)',
     text: 'Driver reported that BUS-142 required significantly more distance to stop during heavy rain and the brake pedal felt abnormal.'
+  },
+  {
+    label: 'BUS-142 பிரேக் பழுது (Tamil)',
+    text: 'BUS-142 கனமழையின் போது பிரேக் பெடல் மிகவும் கடினமாக இருந்தது மற்றும் வாகனம் தாமதமாக நின்றது என ஓட்டுநர் தெரிவித்தார்.'
+  },
+  {
+    label: 'BUS-142 ब्रेक समस्या (Hindi)',
+    text: 'ड्राइवर ने सूचना दी कि भारी बारिश में BUS-142 का ब्रेक पेडल बहुत सख्त हो गया था और रुकने में काफी अधिक दूरी लगी।'
+  },
+  {
+    label: 'BUS-142 Tanglish Brake',
+    text: 'BUS-142 heavy rain-la brake romba loose-ah irundhuchu, stop panna romba distance aachu endru driver report pannaru.'
   },
   {
     label: 'BUS-204 Steering Pull',
     text: 'Morning driver report: BUS-204 exhibited severe steering pull to the left approaching highway speeds on Route 4.'
-  },
-  {
-    label: 'TRK-089 Caliper Pressure',
-    text: 'State transit safety spot audit on TRK-089: brake caliper air line differential pressure exceeded 12% between axles.'
   }
 ];
+
+export const formatLanguageName = (lang?: string): string => {
+  if (!lang) return 'Auto-detected';
+  const clean = lang.toLowerCase().trim();
+  switch (clean) {
+    case 'en':
+      return 'English';
+    case 'ta':
+      return 'Tamil (தமிழ்)';
+    case 'hi':
+      return 'Hindi (हिन्दी)';
+    case 'ta-latn':
+      return 'Tanglish (Tamil in Latin)';
+    case 'hi-latn':
+      return 'Hinglish (Hindi in Latin)';
+    case 'code-mixed':
+      return 'Code-Mixed';
+    default:
+      return lang.toUpperCase();
+  }
+};
 
 export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   isOpen,
@@ -56,6 +92,9 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   // Wizard steps: 'input' -> 'preview' -> 'confirmed'
   const [step, setStep] = useState<'input' | 'preview' | 'confirmed'>('input');
 
+  // Input method mode: 'text' or 'voice'
+  const [inputMode, setInputMode] = useState<'text' | 'voice'>('text');
+
   // Step 1: Input state
   const [reportText, setReportText] = useState('');
   const [selectedAssetId, setSelectedAssetId] = useState<string>(
@@ -65,6 +104,8 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [activeProvider, setActiveProvider] = useState<string>('groq');
   const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
+  const [extractionSource, setExtractionSource] = useState<'text' | 'voice'>('text');
+  const [eventMetadata, setEventMetadata] = useState<EventMetadata | null>(null);
 
   // Synchronize when initialAssetId or availableAssetIds change or modal opens
   useEffect(() => {
@@ -106,12 +147,15 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
   const handleReset = () => {
     setStep('input');
+    setInputMode('text');
     setReportText('');
     setSelectedAssetId(initialAssetId || availableAssetIds[0] || 'BUS-142');
     setEventTimestamp(getNowLocalDateTime());
     setIsExtracting(false);
     setExtractionError(null);
     setFallbackNotice(null);
+    setExtractionSource('text');
+    setEventMetadata(null);
     setIsEditing(false);
     setValidationErrors([]);
     setIsIngesting(false);
@@ -134,6 +178,73 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
     setExtractionError(null);
   };
 
+  const populateExtractedEvent = (
+    response: EventExtractResponse,
+    sourceMode: 'text' | 'voice',
+    fallbackDesc = ''
+  ) => {
+    setActiveProvider(response.provider);
+    setExtractionSource(sourceMode);
+
+    if (response.fallback_used || response.fallback_message) {
+      setFallbackNotice(
+        response.fallback_message || 'Hosted AI providers temporarily unavailable — using local fallback.'
+      );
+    } else {
+      setFallbackNotice(null);
+    }
+
+    const ev = response.extracted_event;
+    if (ev) {
+      setAssetId(selectedAssetId || ev.asset_id || '');
+      setEventType(ev.event_type || 'operational_report');
+      setSubsystem(ev.subsystem || 'braking');
+      setSeverity(ev.severity || 3);
+      setSource(ev.source || (sourceMode === 'voice' ? 'driver' : 'driver'));
+      setReporterRole(ev.reporter_role || 'driver');
+      setDescription(ev.description || fallbackDesc || reportText);
+      setLocation(ev.location || '');
+      setMetadataWeather(ev.raw_metadata?.weather || '');
+      setEventMetadata((ev.raw_metadata as EventMetadata) || null);
+
+      if (ev.timestamp) {
+        try {
+          const d = new Date(ev.timestamp);
+          if (!isNaN(d.getTime())) {
+            const offset = d.getTimezoneOffset() * 60000;
+            setEventTimestamp(new Date(d.getTime() - offset).toISOString().slice(0, 16));
+          } else {
+            setEventTimestamp(getNowLocalDateTime());
+          }
+        } catch {
+          setEventTimestamp(getNowLocalDateTime());
+        }
+      } else {
+        setEventTimestamp(getNowLocalDateTime());
+      }
+
+      if (response.validation_status === 'valid') {
+        setValidationErrors([]);
+        setIsEditing(false);
+      } else {
+        setValidationErrors(
+          response.validation_errors || ['Extraction contains unverified fields. Please review and adjust.']
+        );
+        setIsEditing(true);
+      }
+      setStep('preview');
+    } else {
+      setAssetId(selectedAssetId || availableAssetIds[0] || 'BUS-142');
+      setDescription(fallbackDesc || reportText);
+      setEventTimestamp(getNowLocalDateTime());
+      setValidationErrors(
+        response.validation_errors || ['Extraction failed to produce an event. Please review and adjust manually.']
+      );
+      setIsEditing(true);
+      setStep('preview');
+    }
+  };
+
   const handleExtract = async () => {
     if (!selectedAssetId.trim()) {
       setExtractionError('Please select or specify a target vehicle asset before extracting.');
@@ -154,83 +265,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
     try {
       const response = await api.extractEvent(reportText, selectedAssetId);
-      setActiveProvider(response.provider);
-
-      if (response.fallback_used || response.fallback_message) {
-        setFallbackNotice(
-          response.fallback_message || 'Hosted AI providers temporarily unavailable — using local fallback.'
-        );
-      } else {
-        setFallbackNotice(null);
-      }
-
-      if (response.validation_status === 'valid' && response.extracted_event) {
-        const ev = response.extracted_event;
-        setAssetId(selectedAssetId || ev.asset_id || '');
-        setEventType(ev.event_type || 'operational_report');
-        setSubsystem(ev.subsystem || 'braking');
-        setSeverity(ev.severity || 3);
-        setSource(ev.source || 'driver');
-        setReporterRole(ev.reporter_role || 'driver');
-        setDescription(ev.description || reportText);
-        setLocation(ev.location || '');
-        setMetadataWeather(ev.raw_metadata?.weather || '');
-        if (ev.timestamp) {
-          try {
-            const d = new Date(ev.timestamp);
-            if (!isNaN(d.getTime())) {
-              const offset = d.getTimezoneOffset() * 60000;
-              setEventTimestamp(new Date(d.getTime() - offset).toISOString().slice(0, 16));
-            } else {
-              setEventTimestamp(getNowLocalDateTime());
-            }
-          } catch {
-            setEventTimestamp(getNowLocalDateTime());
-          }
-        } else {
-          setEventTimestamp(getNowLocalDateTime());
-        }
-        setValidationErrors([]);
-        setIsEditing(false);
-        setStep('preview');
-      } else {
-        // Validation notice or invalid extraction
-        const ev = response.extracted_event;
-        if (ev) {
-          setAssetId(selectedAssetId || ev.asset_id || '');
-          setEventType(ev.event_type || 'operational_report');
-          setSubsystem(ev.subsystem || 'braking');
-          setSeverity(ev.severity || 3);
-          setSource(ev.source || 'driver');
-          setReporterRole(ev.reporter_role || 'driver');
-          setDescription(ev.description || reportText);
-          setLocation(ev.location || '');
-          setMetadataWeather(ev.raw_metadata?.weather || '');
-          if (ev.timestamp) {
-            try {
-              const d = new Date(ev.timestamp);
-              if (!isNaN(d.getTime())) {
-                const offset = d.getTimezoneOffset() * 60000;
-                setEventTimestamp(new Date(d.getTime() - offset).toISOString().slice(0, 16));
-              } else {
-                setEventTimestamp(getNowLocalDateTime());
-              }
-            } catch {
-              setEventTimestamp(getNowLocalDateTime());
-            }
-          } else {
-            setEventTimestamp(getNowLocalDateTime());
-          }
-        } else {
-          // Fallback to manual form populated from text
-          setAssetId(selectedAssetId || availableAssetIds[0] || 'BUS-142');
-          setDescription(reportText);
-          setEventTimestamp(getNowLocalDateTime());
-        }
-        setValidationErrors(response.validation_errors || ['Extraction contains unverified fields. Please review and adjust.']);
-        setIsEditing(true);
-        setStep('preview');
-      }
+      populateExtractedEvent(response, 'text', reportText);
     } catch (err: any) {
       setExtractionError(
         err?.message ||
@@ -239,6 +274,11 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
     } finally {
       setIsExtracting(false);
     }
+  };
+
+  const handleVoiceExtractionSuccess = (response: EventExtractResponse) => {
+    const transcript = (response.extracted_event?.raw_metadata as EventMetadata)?.transcript || '';
+    populateExtractedEvent(response, 'voice', transcript);
   };
 
   const handleConfirmIngest = async () => {
@@ -261,6 +301,11 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
       isoTimestamp = new Date().toISOString();
     }
 
+    const mergedMetadata: Record<string, any> = {
+      ...(eventMetadata || {}),
+      ...(metadataWeather.trim() ? { weather: metadataWeather.trim() } : {}),
+    };
+
     const payload: EventCreateRequest = {
       asset_id: assetId.trim().toUpperCase(),
       event_type: eventType,
@@ -271,7 +316,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
       reporter_role: reporterRole,
       timestamp: isoTimestamp,
       location: location.trim() ? location.trim() : null,
-      raw_metadata: metadataWeather.trim() ? { weather: metadataWeather.trim() } : undefined,
+      raw_metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : undefined,
     };
 
     try {
@@ -351,7 +396,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-5">
-          {/* STEP 1: NATURAL LANGUAGE INPUT */}
+          {/* STEP 1: NATURAL LANGUAGE OR VOICE INPUT */}
           {step === 'input' && (
             <div className="space-y-4">
               {/* Target Fleet Asset Selector */}
@@ -372,7 +417,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                   )}
                 </div>
                 <p className="text-xs text-slate-500 font-sans">
-                  Select the vehicle asset to link with this safety report. PREVENT enforces this asset ID authoritatively during extraction.
+                  Select the vehicle asset to link with this safety observation. PREVENT enforces this asset ID authoritatively during extraction.
                 </p>
                 <div className="flex items-center gap-2">
                   <select
@@ -397,79 +442,133 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="safety-report-textarea" className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1 font-mono">
-                  Describe Warning, Complaint, Inspection Finding, or Near-Miss
-                </label>
-                <p className="text-xs text-slate-500 mb-2 font-sans">
-                  Paste verbatim driver shift log, passenger complaint, or maintenance observation.
-                  PREVENT will extract normalized fields for verification.
-                </p>
-                <textarea
-                  id="safety-report-textarea"
-                  value={reportText}
-                  onChange={(e) => setReportText(e.target.value)}
-                  placeholder="Example: Driver reported that BUS-142 required significantly more distance to stop during heavy rain and the brake pedal felt abnormal."
-                  rows={4}
-                  className="w-full rounded border border-slate-200 p-3 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 transition-colors font-sans"
+              {/* Input Method Switcher: [Type Report] [Voice Report] */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputMode('text');
+                      setExtractionError(null);
+                    }}
+                    className={`inline-flex items-center gap-1.5 text-xs font-mono font-semibold px-3 py-1.5 rounded transition-all cursor-pointer ${
+                      inputMode === 'text'
+                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Type Report
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputMode('voice');
+                      setExtractionError(null);
+                    }}
+                    className={`inline-flex items-center gap-1.5 text-xs font-mono font-semibold px-3 py-1.5 rounded transition-all cursor-pointer ${
+                      inputMode === 'voice'
+                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Mic className="w-3.5 h-3.5 text-orange-600" />
+                    Voice Report
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500">
+                  <Globe className="w-3 h-3 text-slate-400" />
+                  <span>Supports English, தமிழ், हिन्दी, Tanglish, Hinglish</span>
+                </div>
+              </div>
+
+              {/* Sub-view A: VOICE RECORDER */}
+              {inputMode === 'voice' && (
+                <AudioRecorder
+                  assetId={selectedAssetId}
+                  onExtractionSuccess={handleVoiceExtractionSuccess}
+                  onSwitchToText={() => setInputMode('text')}
                 />
-                <div className="flex justify-between items-center mt-1 text-[11px] text-slate-400 font-mono">
-                  <span>Minimum 5 characters</span>
-                  <span>{reportText.length} characters</span>
-                </div>
-              </div>
+              )}
 
-              {/* Sample Report Chips */}
-              <div>
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-2 font-mono">
-                  Sample scenarios:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {SAMPLE_REPORTS.map((sample, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleSelectSample(sample.text)}
-                      className="text-xs font-medium px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors text-left cursor-pointer"
-                    >
-                      {sample.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/* Sub-view B: TEXT INPUT */}
+              {inputMode === 'text' && (
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="safety-report-textarea" className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1 font-mono">
+                      Describe Warning, Complaint, Inspection Finding, or Near-Miss
+                    </label>
+                    <p className="text-xs text-slate-500 mb-2 font-sans">
+                      Paste verbatim driver shift log, passenger complaint, or maintenance observation in English, Tamil, Hindi, or code-mixed text. PREVENT will extract normalized fields for verification.
+                    </p>
+                    <textarea
+                      id="safety-report-textarea"
+                      value={reportText}
+                      onChange={(e) => setReportText(e.target.value)}
+                      placeholder="Example: Driver reported that BUS-142 required significantly more distance to stop during heavy rain and the brake pedal felt abnormal. / கனமழையில் பிரேக் பெடல் மிகவும் கடினமாக இருந்தது."
+                      rows={4}
+                      className="w-full rounded border border-slate-200 p-3 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 transition-colors font-sans"
+                    />
+                    <div className="flex justify-between items-center mt-1 text-[11px] text-slate-400 font-mono">
+                      <span>Minimum 5 characters</span>
+                      <span>{reportText.length} characters</span>
+                    </div>
+                  </div>
 
-              {/* Extraction Error */}
-              {extractionError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3.5 flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
-                  <div className="flex-1 text-xs text-red-700">
-                    <p className="font-semibold uppercase tracking-wide">Extraction Issue</p>
-                    <p className="mt-0.5">{extractionError}</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStep('preview');
-                        setIsEditing(true);
-                        setDescription(reportText);
-                        setAssetId(availableAssetIds[0] || 'BUS-142');
-                      }}
-                      className="mt-2 text-xs font-semibold text-red-800 underline cursor-pointer"
-                    >
-                      Continue to manual entry instead →
-                    </button>
+                  {/* Sample Report Chips */}
+                  <div>
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-2 font-mono">
+                      Sample multilingual scenarios:
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {SAMPLE_REPORTS.map((sample, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSelectSample(sample.text)}
+                          className="text-xs font-medium px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors text-left cursor-pointer"
+                        >
+                          {sample.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Extraction Error */}
+                  {extractionError && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3.5 flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                      <div className="flex-1 text-xs text-red-700">
+                        <p className="font-semibold uppercase tracking-wide">Extraction Issue</p>
+                        <p className="mt-0.5">{extractionError}</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStep('preview');
+                            setIsEditing(true);
+                            setDescription(reportText);
+                            setAssetId(selectedAssetId || availableAssetIds[0] || 'BUS-142');
+                          }}
+                          className="mt-2 text-xs font-semibold text-red-800 underline cursor-pointer"
+                        >
+                          Continue to manual entry instead →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Architecture Safeguard Note */}
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 flex items-start gap-2.5 text-xs text-slate-600 font-sans">
+                    <ShieldCheck className="w-4 h-4 text-slate-600 mt-0.5 shrink-0" />
+                    <div>
+                      <span className="font-semibold text-slate-800">Operational Integrity: </span>
+                      The AI model only extracts structured fields. Risk scoring and evidence correlation
+                      are performed strictly by PREVENT's explainable deterministic engine after human confirmation.
+                    </div>
                   </div>
                 </div>
               )}
-
-              {/* Architecture Safeguard Note */}
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 flex items-start gap-2.5 text-xs text-slate-600 font-sans">
-                <ShieldCheck className="w-4 h-4 text-slate-600 mt-0.5 shrink-0" />
-                <div>
-                  <span className="font-semibold text-slate-800">Operational Integrity: </span>
-                  The AI model only extracts structured fields. Risk scoring and evidence correlation
-                  are performed strictly by PREVENT's explainable deterministic engine after human confirmation.
-                </div>
-              </div>
             </div>
           )}
 
@@ -504,6 +603,81 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                 </div>
               )}
 
+              {/* Voice Observation Audio Evidence Card */}
+              {eventMetadata?.transcript && (
+                <div className="rounded-lg border border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50/30 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center">
+                        <Mic className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 font-mono uppercase tracking-wide">
+                          Voice Observation Evidence
+                        </span>
+                        <span className="text-[10px] text-slate-500 block">
+                          Spoken report transcribed and normalized for verification
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {eventMetadata.detected_language && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-800 font-medium">
+                          <Globe className="w-3 h-3 text-slate-500" />
+                          {formatLanguageName(eventMetadata.detected_language)}
+                        </span>
+                      )}
+                      {eventMetadata.transcription_provider && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                          {eventMetadata.transcription_provider}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded bg-white border border-slate-200">
+                    <span className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
+                      Spoken Transcript
+                    </span>
+                    <p className="text-xs text-slate-800 italic font-sans leading-relaxed">
+                      "{eventMetadata.transcript}"
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Multilingual Text Observation Context Card */}
+              {!eventMetadata?.transcript && eventMetadata?.original_text && eventMetadata?.detected_language && eventMetadata.detected_language !== 'en' && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-slate-700" />
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 font-mono uppercase tracking-wide">
+                          Multilingual Observation Input
+                        </span>
+                        <span className="text-[10px] text-slate-500 block">
+                          Normalized to standard safety taxonomy for deterministic scoring
+                        </span>
+                      </div>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-800 font-medium">
+                      <Globe className="w-3 h-3 text-slate-500" />
+                      {formatLanguageName(eventMetadata.detected_language)}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded bg-white border border-slate-200">
+                    <span className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
+                      Original Input Text
+                    </span>
+                    <p className="text-xs text-slate-800 italic font-sans leading-relaxed">
+                      "{eventMetadata.original_text}"
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Header Banner */}
               <div className="flex items-center justify-between rounded-lg bg-slate-50 border border-slate-200 p-3">
                 <div className="flex items-center gap-2.5">
@@ -521,6 +695,8 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                     <span className="text-[11px] text-slate-500 font-sans">
                       {validationErrors.length > 0
                         ? 'Please verify highlighted fields before ingesting.'
+                        : extractionSource === 'voice' || eventMetadata?.transcript
+                        ? 'Review structured event extracted from voice report.'
                         : 'Review structured event extracted from report text.'}
                     </span>
                   </div>
@@ -836,6 +1012,28 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                       className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 focus:border-slate-900 focus:outline-none"
                     />
                   </div>
+
+                  {eventMetadata?.transcript !== undefined && (
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1 font-mono">
+                        Voice Spoken Transcript
+                      </label>
+                      <textarea
+                        value={eventMetadata.transcript}
+                        onChange={(e) =>
+                          setEventMetadata((prev) => ({
+                            ...prev,
+                            transcript: e.target.value
+                          }))
+                        }
+                        rows={2}
+                        className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 font-sans italic focus:border-slate-900 focus:outline-none"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">
+                        Original voice transcript recorded for audit trail provenance.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -949,6 +1147,13 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Recommended Operational Action (Multilingual & Human-Decision Supported) */}
+              <RecommendedActionCard
+                riskLevel={ingestionResult.updated_risk_level}
+                assetId={ingestionResult.asset_id}
+                whyNowSummary={ingestionResult.why_risk_changed?.[0]}
+              />
             </div>
           )}
         </div>
@@ -964,24 +1169,35 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                disabled={isExtracting || !reportText.trim() || !selectedAssetId.trim()}
-                onClick={handleExtract}
-                className="inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded bg-slate-900 hover:bg-slate-800 text-white transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-              >
-                {isExtracting ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
-                    Extracting Event...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Extract Structured Event
-                  </>
-                )}
-              </button>
+              {inputMode === 'text' ? (
+                <button
+                  type="button"
+                  disabled={isExtracting || !reportText.trim() || !selectedAssetId.trim()}
+                  onClick={handleExtract}
+                  className="inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded bg-slate-900 hover:bg-slate-800 text-white transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                >
+                  {isExtracting ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                      Extracting Event...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Extract Structured Event
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setInputMode('text')}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Switch to Text Input
+                </button>
+              )}
             </>
           )}
 
