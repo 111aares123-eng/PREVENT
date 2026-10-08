@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Eye,
   Search,
@@ -11,7 +11,8 @@ import {
   HelpCircle,
   RotateCcw,
   Sliders,
-  ChevronDown
+  ChevronDown,
+  ClipboardCheck
 } from 'lucide-react';
 import type { RiskLevel } from '../../types/api';
 import {
@@ -29,6 +30,8 @@ export interface RecommendedActionCardProps {
   whyNowSummary?: string;
   initialLanguage?: ActionLanguage;
   className?: string;
+  onExecuteProtocol?: () => void;
+  onAcknowledgeAction?: () => void;
 }
 
 export type HumanDecision =
@@ -43,8 +46,12 @@ export const RecommendedActionCard: React.FC<RecommendedActionCardProps> = ({
   assetId,
   whyNowSummary,
   initialLanguage = 'en',
-  className = ''
+  className = '',
+  onExecuteProtocol,
+  onAcknowledgeAction
 }) => {
+  const handleOpenAction = onExecuteProtocol || onAcknowledgeAction;
+
   // Multilingual preference (local UI state)
   const [language, setLanguage] = useState<ActionLanguage>(() => {
     // Check localStorage fallback if available
@@ -58,7 +65,56 @@ export const RecommendedActionCard: React.FC<RecommendedActionCardProps> = ({
   });
 
   // Role perspective preference
-  const [role, setRole] = useState<ActionRole>('general');
+  const [role, setRole] = useState<ActionRole>(() => {
+    try {
+      const saved = localStorage.getItem('prevent_action_role');
+      if (saved === 'general' || saved === 'field_worker' || saved === 'supervisor' || saved === 'safety_officer') {
+        return saved;
+      }
+    } catch {
+      // ignore
+    }
+    return 'general';
+  });
+
+  // Active Field Action State from localStorage
+  const [activeActionState, setActiveActionState] = useState<{
+    status: string;
+    acknowledgedAt?: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!assetId) {
+      setActiveActionState(null);
+      return;
+    }
+    const checkState = () => {
+      try {
+        const saved = localStorage.getItem(`prevent_action_state_${assetId}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.status && parsed.status !== 'NOT_STARTED') {
+            setActiveActionState({
+              status: parsed.status,
+              acknowledgedAt: parsed.acknowledgedAt
+            });
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
+      setActiveActionState(null);
+    };
+
+    checkState();
+    window.addEventListener('storage', checkState);
+    window.addEventListener('prevent_action_state_changed', checkState);
+    return () => {
+      window.removeEventListener('storage', checkState);
+      window.removeEventListener('prevent_action_state_changed', checkState);
+    };
+  }, [assetId]);
 
   // Human decision / override state (UI-only, no database mutation)
   const [decision, setDecision] = useState<HumanDecision>({ type: 'NONE' });
@@ -66,6 +122,15 @@ export const RecommendedActionCard: React.FC<RecommendedActionCardProps> = ({
 
   const guidance = getRecommendedAction(riskLevel, language, role);
   const ui = getActionUiDictionary(language);
+
+  const handleRoleChange = (newRole: ActionRole) => {
+    setRole(newRole);
+    try {
+      localStorage.setItem('prevent_action_role', newRole);
+    } catch {
+      // ignore
+    }
+  };
 
   const handleLanguageChange = (newLang: ActionLanguage) => {
     setLanguage(newLang);
@@ -169,6 +234,12 @@ export const RecommendedActionCard: React.FC<RecommendedActionCardProps> = ({
               {assetId}
             </span>
           )}
+          {activeActionState && (
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+              Action in Progress
+            </span>
+          )}
         </div>
 
         {/* Accessibility & Preferences Toolbar */}
@@ -200,7 +271,7 @@ export const RecommendedActionCard: React.FC<RecommendedActionCardProps> = ({
             <select
               id="action-role-select"
               value={role}
-              onChange={(e) => setRole(e.target.value as ActionRole)}
+              onChange={(e) => handleRoleChange(e.target.value as ActionRole)}
               className="text-xs font-medium text-slate-700 bg-transparent focus:outline-none cursor-pointer pr-1"
             >
               <option value="general">{ui.roles.general}</option>
@@ -234,8 +305,35 @@ export const RecommendedActionCard: React.FC<RecommendedActionCardProps> = ({
           </div>
         </div>
 
-        {/* Human Override Controls (UI-Only, Explainable Human Decision Record) */}
+        {/* Human Override Controls & Field Protocol Execution */}
         <div className="shrink-0 flex flex-col gap-2 min-w-[220px]">
+          {handleOpenAction && (
+            <div className="bg-white/90 p-3 rounded-lg border border-black/10 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-600">
+                  Field Protocol
+                </span>
+                {activeActionState ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                    Action in Progress
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono text-slate-400">Ready</span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleOpenAction}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"
+              >
+                <ClipboardCheck className="w-3.5 h-3.5 text-amber-400" />
+                {activeActionState ? 'Resume Field Protocol' : 'Execute Field Protocol'}
+              </button>
+            </div>
+          )}
+
           {decision.type === 'NONE' ? (
             <div className="space-y-1.5 bg-white/90 p-3 rounded-lg border border-black/10 shadow-2xs">
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-600 block">

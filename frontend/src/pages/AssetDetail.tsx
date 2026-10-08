@@ -18,6 +18,8 @@ import { EventTimeline } from '../components/timeline/EventTimeline';
 import { EvidenceGraphView } from '../components/evidence/EvidenceGraphView';
 import { WhatIfSimulator } from '../components/simulation/WhatIfSimulator';
 import { AddSafetyReportModal } from '../components/ingestion/AddSafetyReportModal';
+import { FieldActionModal } from '../components/assets/FieldActionModal';
+import type { FieldActionOutcomePayload } from '../types/actions';
 import { AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 
 export const AssetDetail: React.FC = () => {
@@ -34,6 +36,41 @@ export const AssetDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [is404, setIs404] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isFieldActionModalOpen, setIsFieldActionModalOpen] = useState(false);
+  const [activeFieldContext, setActiveFieldContext] = useState<FieldActionOutcomePayload | null>(null);
+
+  const handleReportOutcome = (payload: FieldActionOutcomePayload) => {
+    // Phase 5 Step 2: Handoff outcome payload directly into existing AddSafetyReportModal
+    setActiveFieldContext(payload);
+    setIsFieldActionModalOpen(false);
+    setIsReportModalOpen(true);
+  };
+
+  const handleEventIngested = (ingestedAssetId: string) => {
+    // If report was connected to a field action protocol, update local execution status to OUTCOME_PENDING
+    const targetAssetId = ingestedAssetId || assetId;
+    if (targetAssetId && activeFieldContext && activeFieldContext.assetId === targetAssetId) {
+      try {
+        const storageKey = `prevent_action_state_${targetAssetId}`;
+        const saved = localStorage.getItem(storageKey);
+        const existing = saved ? JSON.parse(saved) : {};
+        const updatedState = {
+          ...existing,
+          assetId: targetAssetId,
+          status: 'OUTCOME_PENDING',
+          completedAt: new Date().toISOString()
+        };
+        localStorage.setItem(storageKey, JSON.stringify(updatedState));
+        window.dispatchEvent(new Event('prevent_action_state_changed'));
+      } catch {
+        // ignore
+      }
+      setActiveFieldContext(null);
+    }
+
+    // Authoritative refresh of risk, timeline, and trajectory from backend
+    fetchAssetData(true);
+  };
 
   const scrollToEvent = (eventId: string) => {
     setSelectedEventId(eventId);
@@ -175,6 +212,7 @@ export const AssetDetail: React.FC = () => {
               primarySubsystem={dossier.primary_subsystem}
               assetId={dossier.asset.asset_id}
               whyNowSummary={(whyNow || dossier.why_now)?.summary}
+              onExecuteProtocol={() => setIsFieldActionModalOpen(true)}
             />
 
             {/* 4. Risk Trajectory Chart */}
@@ -227,14 +265,32 @@ export const AssetDetail: React.FC = () => {
         PREVENT Decision-Support Platform • Asset Safety Dossier • Evaluated via Deterministic Scoring
       </footer>
 
-      {/* AI Safety Report Ingestion Modal (Asset Context) */}
+      {/* AI Safety Report Ingestion Modal (Asset Context & Field Protocol Handoff) */}
       <AddSafetyReportModal
         isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        onEventIngested={() => fetchAssetData(true)}
+        onClose={() => {
+          setIsReportModalOpen(false);
+          setActiveFieldContext(null);
+        }}
+        onEventIngested={handleEventIngested}
         initialAssetId={assetId}
         availableAssetIds={assetId ? [assetId] : []}
+        fieldContext={activeFieldContext}
       />
+
+      {/* Field Action Workflow Modal (Phase 5 Step 1) */}
+      {dossier && (
+        <FieldActionModal
+          isOpen={isFieldActionModalOpen}
+          onClose={() => setIsFieldActionModalOpen(false)}
+          assetId={dossier.asset.asset_id}
+          riskLevel={dossier.risk_level}
+          riskScore={dossier.risk_score}
+          primarySubsystem={dossier.primary_subsystem}
+          whyNowSummary={(whyNow || dossier.why_now)?.summary}
+          onReportOutcome={handleReportOutcome}
+        />
+      )}
     </div>
   );
 };

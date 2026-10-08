@@ -25,6 +25,7 @@ import type {
   EventExtractResponse,
   EventMetadata
 } from '../../types/api';
+import type { FieldActionOutcomePayload } from '../../types/actions';
 import { AudioRecorder } from './AudioRecorder';
 import { RecommendedActionCard } from '../assets/RecommendedActionCard';
 
@@ -34,6 +35,7 @@ interface AddSafetyReportModalProps {
   onEventIngested?: (assetId: string) => void;
   availableAssetIds?: string[];
   initialAssetId?: string;
+  fieldContext?: FieldActionOutcomePayload | null;
 }
 
 const SAMPLE_REPORTS = [
@@ -85,7 +87,8 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   onClose,
   onEventIngested,
   availableAssetIds = [],
-  initialAssetId = ''
+  initialAssetId = '',
+  fieldContext = null
 }) => {
   const navigate = useNavigate();
 
@@ -96,9 +99,9 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   const [inputMode, setInputMode] = useState<'text' | 'voice'>('text');
 
   // Step 1: Input state
-  const [reportText, setReportText] = useState('');
+  const [reportText, setReportText] = useState(fieldContext?.initialReportText || '');
   const [selectedAssetId, setSelectedAssetId] = useState<string>(
-    initialAssetId || availableAssetIds[0] || 'BUS-142'
+    fieldContext?.assetId || initialAssetId || availableAssetIds[0] || 'BUS-142'
   );
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
@@ -107,14 +110,32 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   const [extractionSource, setExtractionSource] = useState<'text' | 'voice'>('text');
   const [eventMetadata, setEventMetadata] = useState<EventMetadata | null>(null);
 
-  // Synchronize when initialAssetId or availableAssetIds change or modal opens
+  // Synchronize when initialAssetId, availableAssetIds, fieldContext, or modal opens
   useEffect(() => {
-    if (initialAssetId) {
+    if (fieldContext) {
+      if (fieldContext.assetId) {
+        setSelectedAssetId(fieldContext.assetId);
+        setAssetId(fieldContext.assetId);
+      }
+      if (fieldContext.primarySubsystem) {
+        setSubsystem(fieldContext.primarySubsystem);
+      }
+      if (fieldContext.suggestedEventType) {
+        setEventType(fieldContext.suggestedEventType);
+      }
+      if (fieldContext.suggestedReporterRole) {
+        setReporterRole(fieldContext.suggestedReporterRole);
+      }
+      setSource('field_action');
+      if (fieldContext.initialReportText) {
+        setReportText(fieldContext.initialReportText);
+      }
+    } else if (initialAssetId) {
       setSelectedAssetId(initialAssetId);
     } else if (availableAssetIds.length > 0 && (!selectedAssetId || !availableAssetIds.includes(selectedAssetId))) {
       setSelectedAssetId(availableAssetIds[0]);
     }
-  }, [initialAssetId, availableAssetIds, isOpen]);
+  }, [initialAssetId, availableAssetIds, isOpen, fieldContext]);
 
   // Step 2: Extracted & editable state
   const [isEditing, setIsEditing] = useState(false);
@@ -129,13 +150,13 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   };
 
   // Form field state for editing / verification
-  const [assetId, setAssetId] = useState('');
+  const [assetId, setAssetId] = useState(fieldContext?.assetId || '');
   const [eventTimestamp, setEventTimestamp] = useState<string>(getNowLocalDateTime);
-  const [eventType, setEventType] = useState('operational_report');
-  const [subsystem, setSubsystem] = useState('braking');
+  const [eventType, setEventType] = useState(fieldContext?.suggestedEventType || 'operational_report');
+  const [subsystem, setSubsystem] = useState(fieldContext?.primarySubsystem || 'braking');
   const [severity, setSeverity] = useState(3);
-  const [source, setSource] = useState('driver');
-  const [reporterRole, setReporterRole] = useState('driver');
+  const [source, setSource] = useState(fieldContext ? 'field_action' : 'driver');
+  const [reporterRole, setReporterRole] = useState(fieldContext?.suggestedReporterRole || 'driver');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
   const [metadataWeather, setMetadataWeather] = useState('');
@@ -148,8 +169,18 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   const handleReset = () => {
     setStep('input');
     setInputMode('text');
-    setReportText('');
-    setSelectedAssetId(initialAssetId || availableAssetIds[0] || 'BUS-142');
+    if (fieldContext) {
+      setSelectedAssetId(fieldContext.assetId);
+      setAssetId(fieldContext.assetId);
+      setSubsystem(fieldContext.primarySubsystem || 'braking');
+      setEventType(fieldContext.suggestedEventType || 'corrective_action');
+      setReporterRole(fieldContext.suggestedReporterRole || 'technician');
+      setSource('field_action');
+      setReportText(fieldContext.initialReportText || '');
+    } else {
+      setReportText('');
+      setSelectedAssetId(initialAssetId || availableAssetIds[0] || 'BUS-142');
+    }
     setEventTimestamp(getNowLocalDateTime());
     setIsExtracting(false);
     setExtractionError(null);
@@ -197,11 +228,18 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
     const ev = response.extracted_event;
     if (ev) {
       setAssetId(selectedAssetId || ev.asset_id || '');
-      setEventType(ev.event_type || 'operational_report');
-      setSubsystem(ev.subsystem || 'braking');
+
+      // If field action context suggested an event type (e.g. corrective_action), prioritize it over generic fallback
+      if (fieldContext?.suggestedEventType && (!ev.event_type || ev.event_type === 'operational_report')) {
+        setEventType(fieldContext.suggestedEventType);
+      } else {
+        setEventType(ev.event_type || fieldContext?.suggestedEventType || 'operational_report');
+      }
+
+      setSubsystem(ev.subsystem || fieldContext?.primarySubsystem || 'braking');
       setSeverity(ev.severity || 3);
-      setSource(ev.source || (sourceMode === 'voice' ? 'driver' : 'driver'));
-      setReporterRole(ev.reporter_role || 'driver');
+      setSource(ev.source || (fieldContext ? 'field_action' : sourceMode === 'voice' ? 'driver' : 'driver'));
+      setReporterRole(fieldContext?.suggestedReporterRole || ev.reporter_role || 'driver');
       setDescription(ev.description || fallbackDesc || reportText);
       setLocation(ev.location || '');
       setMetadataWeather(ev.raw_metadata?.weather || '');
@@ -399,6 +437,37 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
           {/* STEP 1: NATURAL LANGUAGE OR VOICE INPUT */}
           {step === 'input' && (
             <div className="space-y-4">
+              {/* Linked Field Action Context Banner */}
+              {fieldContext && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-3.5 space-y-1.5 shadow-2xs">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-blue-700 shrink-0" />
+                      <span className="font-bold text-blue-950 font-mono text-[11px] uppercase tracking-wide">
+                        Field Protocol Ingestion
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-200 text-blue-900 font-bold">
+                        {fieldContext.assetId}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white text-blue-800 border border-blue-200 font-medium">
+                        Target: {fieldContext.primarySubsystem}
+                      </span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold">
+                        {fieldContext.checklistCompletedCount}/{fieldContext.totalChecklistCount} Checks Completed
+                      </span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-200 font-semibold uppercase">
+                        Suggested: {fieldContext.suggestedEventType}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-blue-800 font-sans leading-relaxed">
+                    Review and verify the field observation below. You may edit text, switch to voice reporting, or adjust canonical parameters prior to explicit human confirmation.
+                  </p>
+                </div>
+              )}
+
               {/* Target Fleet Asset Selector */}
               <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4 space-y-2">
                 <div className="flex items-center justify-between">
@@ -712,6 +781,26 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                 </button>
               </div>
 
+              {/* Linked Field Protocol Context */}
+              {fieldContext && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-blue-700 shrink-0" />
+                    <div>
+                      <span className="font-bold text-blue-950 font-mono text-[11px] uppercase block">
+                        Linked Field Action Protocol: {fieldContext.assetId}
+                      </span>
+                      <span className="text-[11px] text-blue-800 font-sans">
+                        {fieldContext.checklistCompletedCount}/{fieldContext.totalChecklistCount} Checks Completed • Subsystem: {fieldContext.primarySubsystem}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-200 text-blue-900 font-bold uppercase shrink-0">
+                    {eventType}
+                  </span>
+                </div>
+              )}
+
               {/* Validation Errors Notice */}
               {validationErrors.length > 0 && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
@@ -905,7 +994,8 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                         onChange={(e) => setEventType(e.target.value)}
                         className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 focus:border-slate-900 focus:outline-none"
                       >
-                        <option value="operational_report">operational_report (driver log)</option>
+                        <option value="corrective_action">corrective_action (hazard mitigation / repair)</option>
+                        <option value="operational_report">operational_report (field / driver log)</option>
                         <option value="maintenance">maintenance (workshop repair)</option>
                         <option value="inspection">inspection (safety audit)</option>
                         <option value="complaint">complaint (passenger feedback)</option>
