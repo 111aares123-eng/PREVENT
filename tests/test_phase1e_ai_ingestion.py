@@ -37,6 +37,8 @@ from unittest.mock import MagicMock
 from backend.app.services.llm import (
     MockProvider,
     GeminiProvider,
+    GroqProvider,
+    ProviderRouter,
     LLMConfigurationError,
     LLMExtractionError,
     LLMTemporaryUnavailableError,
@@ -611,3 +613,292 @@ def test_api_extract_endpoint_returns_fallback_fields(client):
     assert "fallback_used" in data
     assert "fallback_message" in data
     assert data["fallback_used"] is False
+
+
+# ---------------------------------------------------------------------------
+# 16. Multi-Tier Router Tests (Groq Primary -> Gemini Secondary -> Mock Fallback)
+# ---------------------------------------------------------------------------
+
+def test_groq_provider_configuration(monkeypatch):
+    """Verify GroqProvider initializes with valid key and rejects missing key."""
+    prov = GroqProvider(api_key="mock-groq-key", model_name="openai/gpt-oss-20b")
+    assert prov.provider_name == "groq"
+    assert prov.model_name == "openai/gpt-oss-20b"
+    assert prov.api_key == "mock-groq-key"
+
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    monkeypatch.setattr(settings, "GROQ_API_KEY", None)
+    with pytest.raises(LLMConfigurationError) as exc_info:
+        GroqProvider(api_key=None)
+    assert "Groq API key" in str(exc_info.value)
+
+
+def test_router_test_a_groq_success(db_session):
+    """Test A: Groq succeeds -> provider='groq', fallback_used=False."""
+    mock_groq = MagicMock(spec=GroqProvider)
+    mock_groq.provider_name = "groq"
+    mock_groq.extract_event.return_value = {
+        "asset_id": "BUS-142",
+        "event_type": "operational_report",
+        "subsystem": "braking",
+        "severity": 4,
+        "description": "Groq extracted brake issue",
+        "source": "driver",
+        "reporter_role": "driver"
+    }
+
+    mock_gemini = MagicMock(spec=GeminiProvider)
+    mock_gemini.provider_name = "gemini"
+
+    router = ProviderRouter(primary_provider=mock_groq, secondary_provider=mock_gemini)
+    service = EventIngestionService(default_provider=router)
+    res = service.extract_from_report("Driver reported BUS-142 brake issue", db=db_session, provider=router)
+
+    assert res.validation_status == "valid"
+    assert res.provider == "groq"
+    assert res.fallback_used is False
+    assert res.fallback_message is None
+    assert res.extracted_event.asset_id == "BUS-142"
+    assert mock_gemini.extract_event.called is False
+
+
+def test_router_test_b_groq_503_attempts_gemini(db_session):
+    """Test B: Groq returns temporary 503 -> Gemini is attempted."""
+    mock_groq = MagicMock(spec=GroqProvider)
+    mock_groq.provider_name = "groq"
+    mock_groq.extract_event.side_effect = LLMTemporaryUnavailableError("503 Service Unavailable", status_code=503)
+
+    mock_gemini = MagicMock(spec=GeminiProvider)
+    mock_gemini.provider_name = "gemini"
+    mock_gemini.extract_event.return_value = {
+        "asset_id": "BUS-142",
+        "event_type": "operational_report",
+        "subsystem": "braking",
+        "severity": 4,
+        "description": "Gemini secondary extraction",
+        "source": "driver",
+        "reporter_role": "driver"
+    }
+
+    router = ProviderRouter(primary_provider=mock_groq, secondary_provider=mock_gemini)
+    service = EventIngestionService(default_provider=router)
+    res = service.extract_from_report("Driver reported BUS-142 brake issue", db=db_session, provider=router)
+
+    assert mock_gemini.extract_event.called is True
+    assert res.validation_status == "valid"
+    assert res.provider == "gemini"
+    assert res.fallback_used is True
+
+
+def test_router_test_c_groq_429_attempts_gemini(db_session):
+    """Test C: Groq returns temporary 429 rate limit -> Gemini is attempted."""
+    mock_groq = MagicMock(spec=GroqProvider)
+    mock_groq.provider_name = "groq"
+    mock_groq.extract_event.side_effect = LLMTemporaryUnavailableError("429 Rate limit reached", status_code=429)
+
+    mock_gemini = MagicMock(spec=GeminiProvider)
+    mock_gemini.provider_name = "gemini"
+    mock_gemini.extract_event.return_value = {
+        "asset_id": "BUS-142",
+        "event_type": "operational_report",
+        "subsystem": "braking",
+        "severity": 4,
+        "description": "Gemini secondary after 429",
+        "source": "driver",
+        "reporter_role": "driver"
+    }
+
+    router = ProviderRouter(primary_provider=mock_groq, secondary_provider=mock_gemini)
+    service = EventIngestionService(default_provider=router)
+    res = service.extract_from_report("Driver reported BUS-142 brake issue", db=db_session, provider=router)
+
+    assert mock_gemini.extract_event.called is True
+    assert res.validation_status == "valid"
+    assert res.provider == "gemini"
+    assert res.fallback_used is True
+
+
+def test_router_test_d_groq_failure_gemini_success_message(db_session):
+    """Test D: Groq temporary failure + Gemini success -> provider='gemini', message indicates Groq unavailable."""
+    mock_groq = MagicMock(spec=GroqProvider)
+    mock_groq.provider_name = "groq"
+    mock_groq.extract_event.side_effect = LLMTemporaryUnavailableError("503 Service Unavailable", status_code=503)
+
+    mock_gemini = MagicMock(spec=GeminiProvider)
+    mock_gemini.provider_name = "gemini"
+    mock_gemini.extract_event.return_value = {
+        "asset_id": "BUS-142",
+        "event_type": "operational_report",
+        "subsystem": "braking",
+        "severity": 4,
+        "description": "Gemini extracted event",
+        "source": "driver",
+        "reporter_role": "driver"
+    }
+
+    router = ProviderRouter(primary_provider=mock_groq, secondary_provider=mock_gemini)
+    service = EventIngestionService(default_provider=router)
+    res = service.extract_from_report("Driver reported BUS-142 brake issue", db=db_session, provider=router)
+
+    assert res.provider == "gemini"
+    assert res.fallback_used is True
+    assert "Groq temporarily unavailable — using Gemini secondary provider." in res.fallback_message
+
+
+def test_router_test_e_groq_and_gemini_temporary_failures_activate_mock(db_session):
+    """Test E: Groq failure + Gemini 503 -> provider='mock', message indicates both hosted providers failed."""
+    mock_groq = MagicMock(spec=GroqProvider)
+    mock_groq.provider_name = "groq"
+    mock_groq.extract_event.side_effect = LLMTemporaryUnavailableError("503 Groq Unavailable", status_code=503)
+
+    mock_gemini = MagicMock(spec=GeminiProvider)
+    mock_gemini.provider_name = "gemini"
+    mock_gemini.extract_event.side_effect = LLMTemporaryUnavailableError("503 Gemini Unavailable", status_code=503)
+
+    router = ProviderRouter(
+        primary_provider=mock_groq,
+        secondary_provider=mock_gemini,
+        fallback_provider=MockProvider()
+    )
+    service = EventIngestionService(default_provider=router)
+    report = "Driver reported that BUS-142 required significantly more distance to stop during heavy rain."
+    res = service.extract_from_report(report, db=db_session, provider=router)
+
+    assert res.validation_status == "valid"
+    assert res.provider == "mock"
+    assert res.fallback_used is True
+    assert "Hosted AI providers temporarily unavailable — using local fallback." in res.fallback_message
+    assert res.extracted_event.asset_id == "BUS-142"
+
+
+def test_router_test_f_groq_auth_or_config_error_does_not_fall_back(db_session):
+    """Test F: Groq authentication/configuration error must NOT silently fall back."""
+    mock_groq = MagicMock(spec=GroqProvider)
+    mock_groq.provider_name = "groq"
+    mock_groq.extract_event.side_effect = LLMConfigurationError("Groq API key is not configured.")
+
+    mock_gemini = MagicMock(spec=GeminiProvider)
+    mock_gemini.provider_name = "gemini"
+
+    router = ProviderRouter(primary_provider=mock_groq, secondary_provider=mock_gemini)
+    service = EventIngestionService(default_provider=router)
+    res = service.extract_from_report("Some report text", db=db_session, provider=router)
+
+    assert res.validation_status == "invalid"
+    assert res.fallback_used is False
+    assert mock_gemini.extract_event.called is False
+    assert any("Groq API key" in err for err in res.validation_errors)
+
+
+def test_router_test_g_gemini_auth_error_does_not_fall_back_to_mock(db_session):
+    """Test G: Gemini authentication error must NOT silently fall back to mock."""
+    mock_groq = MagicMock(spec=GroqProvider)
+    mock_groq.provider_name = "groq"
+    mock_groq.extract_event.side_effect = LLMTemporaryUnavailableError("503 Service Unavailable", status_code=503)
+
+    mock_gemini = MagicMock(spec=GeminiProvider)
+    mock_gemini.provider_name = "gemini"
+    mock_gemini.extract_event.side_effect = LLMExtractionError("Gemini 401 Unauthorized: Invalid API key")
+
+    mock_fallback = MagicMock(spec=MockProvider)
+    mock_fallback.provider_name = "mock"
+
+    router = ProviderRouter(
+        primary_provider=mock_groq,
+        secondary_provider=mock_gemini,
+        fallback_provider=mock_fallback
+    )
+    service = EventIngestionService(default_provider=router)
+    res = service.extract_from_report("Some report text", db=db_session, provider=router)
+
+    assert res.validation_status == "invalid"
+    assert res.fallback_used is False
+    assert mock_fallback.extract_event.called is False
+    assert any("Gemini 401 Unauthorized" in err for err in res.validation_errors)
+
+
+def test_router_test_h_mock_fallback_produces_valid_extraction(db_session):
+    """Test H: Mock final fallback produces valid structured extraction with PREVENT schema."""
+    mock_groq = MagicMock(spec=GroqProvider)
+    mock_groq.provider_name = "groq"
+    mock_groq.extract_event.side_effect = LLMTemporaryUnavailableError("503 Unavailable", status_code=503)
+
+    mock_gemini = MagicMock(spec=GeminiProvider)
+    mock_gemini.provider_name = "gemini"
+    mock_gemini.extract_event.side_effect = LLMTemporaryUnavailableError("503 Unavailable", status_code=503)
+
+    router = ProviderRouter(
+        primary_provider=mock_groq,
+        secondary_provider=mock_gemini,
+        fallback_provider=MockProvider()
+    )
+    service = EventIngestionService(default_provider=router)
+    report = "Driver reported that BUS-142 required significantly more distance to stop during heavy rain."
+    res = service.extract_from_report(report, db=db_session, provider=router)
+
+    assert res.validation_status == "valid"
+    assert res.extracted_event is not None
+    assert res.extracted_event.asset_id == "BUS-142"
+    assert res.extracted_event.subsystem == Subsystem.BRAKING
+    assert res.extracted_event.severity >= 1
+
+
+def test_router_test_i_extraction_remains_non_persistent(db_session):
+    """Test I: Extraction through router never mutates database events or assessments."""
+    events_before = db_session.query(Event).count()
+    assessments_before = db_session.query(RiskAssessment).count()
+
+    mock_groq = MagicMock(spec=GroqProvider)
+    mock_groq.provider_name = "groq"
+    mock_groq.extract_event.return_value = {
+        "asset_id": "BUS-142",
+        "event_type": "operational_report",
+        "subsystem": "braking",
+        "severity": 4,
+        "description": "Non-persistent test",
+        "source": "driver",
+        "reporter_role": "driver"
+    }
+
+    router = ProviderRouter(primary_provider=mock_groq)
+    service = EventIngestionService(default_provider=router)
+
+    for _ in range(3):
+        res = service.extract_from_report("Some report", db=db_session, provider=router)
+        assert res.validation_status == "valid"
+
+    events_after = db_session.query(Event).count()
+    assessments_after = db_session.query(RiskAssessment).count()
+
+    assert events_after == events_before
+    assert assessments_after == assessments_before
+
+
+def test_router_test_j_and_k_confirmation_persists_and_recalculates(client, db_session):
+    """Test J & K: Confirming an event persists exactly 1 event and recalculates deterministic risk."""
+    events_before = db_session.query(Event).count()
+
+    payload = {
+        "asset_id": "BUS-142",
+        "event_type": "operational_report",
+        "subsystem": "braking",
+        "severity": 4,
+        "description": "Confirmed event after multi-tier router test",
+        "source": "driver",
+        "reporter_role": "driver"
+    }
+
+    resp = client.post("/api/v1/events", json=payload)
+    assert resp.status_code == 201
+    data = resp.json()
+
+    # Test J: Exactly one event persisted
+    events_after = db_session.query(Event).count()
+    assert events_after == events_before + 1
+
+    # Test K: Risk recalculation succeeded
+    assert data["asset_id"] == "BUS-142"
+    assert "updated_risk_score" in data
+    assert "factor_breakdown" in data
+    assert "why_risk_changed" in data
+    assert data["updated_risk_score"] > 0

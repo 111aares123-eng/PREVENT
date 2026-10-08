@@ -57,7 +57,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   const [reportText, setReportText] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
-  const [activeProvider, setActiveProvider] = useState<string>('gemini');
+  const [activeProvider, setActiveProvider] = useState<string>('groq');
   const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
 
   // Step 2: Extracted & editable state
@@ -125,7 +125,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
       if (response.fallback_used || response.fallback_message) {
         setFallbackNotice(
-          response.fallback_message || 'Gemini temporarily unavailable — using local fallback.'
+          response.fallback_message || 'Hosted AI providers temporarily unavailable — using local fallback.'
         );
       } else {
         setFallbackNotice(null);
@@ -377,14 +377,16 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                         Fallback Extraction Activated
                       </span>
                       <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200 border border-amber-700/50">
-                        PROVIDER: MOCK
+                        PROVIDER: {activeProvider.toUpperCase()}
                       </span>
                     </div>
                     <p className="font-semibold text-amber-200">
-                      Gemini temporarily unavailable — using local fallback.
+                      {fallbackNotice}
                     </p>
                     <p className="text-[11px] text-amber-300/80">
-                      Due to temporary upstream capacity limits, this report was extracted using PREVENT's local heuristic parser. Review the fields below before persisting.
+                      {activeProvider === 'gemini'
+                        ? 'Extracted via Gemini secondary provider. Please review all fields before confirming.'
+                        : "Due to temporary hosted capacity limits, this report was extracted using PREVENT's local heuristic parser. Review the fields below before persisting."}
                     </p>
                   </div>
                 </div>

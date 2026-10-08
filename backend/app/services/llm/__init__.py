@@ -15,21 +15,29 @@ from backend.app.services.llm.base import (
 )
 from backend.app.services.llm.mock_provider import MockProvider
 from backend.app.services.llm.gemini_provider import GeminiProvider
+from backend.app.services.llm.groq_provider import GroqProvider
+from backend.app.services.llm.provider_router import ProviderRouter
 
 
 def get_llm_provider(provider_type: Optional[str] = None) -> LLMProvider:
     """
     Factory resolving the active LLM provider from settings or explicit argument.
-    Defaults to MockProvider if no API key is present or provider is 'mock'.
+    Defaults to ProviderRouter (Groq -> Gemini -> Mock) unless explicitly overridden.
     """
-    selected = (provider_type or settings.LLM_PROVIDER or "mock").lower()
+    selected = (provider_type or settings.LLM_PROVIDER or "router").lower()
 
-    if selected == "gemini":
+    if selected in ("router", "auto"):
+        return ProviderRouter()
+    elif selected == "groq":
+        return GroqProvider()
+    elif selected == "gemini":
         return GeminiProvider()
     elif selected == "mock":
         return MockProvider()
     else:
-        raise LLMConfigurationError(f"Unsupported LLM provider: '{selected}'. Supported: 'gemini', 'mock'")
+        raise LLMConfigurationError(
+            f"Unsupported LLM provider: '{selected}'. Supported: 'router', 'groq', 'gemini', 'mock'"
+        )
 
 
 __all__ = [
@@ -39,7 +47,9 @@ __all__ = [
     "LLMExtractionError",
     "LLMTemporaryUnavailableError",
     "is_temporary_availability_error",
+    "GroqProvider",
     "GeminiProvider",
     "MockProvider",
+    "ProviderRouter",
     "get_llm_provider"
 ]

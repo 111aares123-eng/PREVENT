@@ -59,7 +59,7 @@ class EventIngestionService:
         except Exception as exc:
             return EventExtractResponse(
                 extracted_event=None,
-                provider=getattr(settings, "LLM_PROVIDER", "gemini"),
+                provider=getattr(settings, "LLM_PRIMARY", getattr(settings, "LLM_PROVIDER", "groq")),
                 validation_status="invalid",
                 validation_errors=[f"AI extraction unavailable: {str(exc)}"],
                 raw_extraction=None,
@@ -71,16 +71,20 @@ class EventIngestionService:
         fallback_message: Optional[str] = None
 
         try:
-            raw_data = active_provider.extract_event(report_text)
+            if hasattr(active_provider, "extract_with_fallback"):
+                raw_data, provider_name, fallback_used, fallback_message = active_provider.extract_with_fallback(report_text)
+            else:
+                raw_data = active_provider.extract_event(report_text)
         except Exception as exc:
-            # Check if temporary provider availability failure (e.g. HTTP 503, 500, UNAVAILABLE) and active provider is not mock
+            # Check if temporary provider availability failure (e.g. HTTP 429, 503, 500, UNAVAILABLE) and active provider is not mock
             if provider_name != "mock" and is_temporary_availability_error(exc):
+                failed_provider = provider_name
                 try:
                     mock_fallback = MockProvider()
                     raw_data = mock_fallback.extract_event(report_text)
                     provider_name = mock_fallback.provider_name  # "mock"
                     fallback_used = True
-                    fallback_message = "Gemini temporarily unavailable — using local fallback."
+                    fallback_message = f"{failed_provider.title()} temporarily unavailable — using local fallback."
                 except Exception as fallback_exc:
                     return EventExtractResponse(
                         extracted_event=None,
@@ -89,7 +93,7 @@ class EventIngestionService:
                         validation_errors=[f"AI extraction fallback failed: {str(fallback_exc)}"],
                         raw_extraction=None,
                         fallback_used=True,
-                        fallback_message="Gemini temporarily unavailable — using local fallback."
+                        fallback_message=f"{failed_provider.title()} temporarily unavailable — using local fallback."
                     )
             else:
                 return EventExtractResponse(

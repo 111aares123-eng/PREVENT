@@ -120,8 +120,17 @@ class Settings(BaseSettings):
     risk_weights: RiskScoringWeights = Field(default_factory=RiskScoringWeights)
     confidence_weights: ConfidenceScoringWeights = Field(default_factory=ConfidenceScoringWeights)
 
-    # LLM Provider Configuration
-    LLM_PROVIDER: str = Field(default="mock", description="LLM provider: 'mock' or 'gemini'")
+    # LLM Provider & Router Configuration
+    LLM_PROVIDER: Optional[str] = Field(default=None, description="Explicit provider override ('router', 'groq', 'gemini', 'mock')")
+    LLM_PRIMARY: str = Field(default="groq", description="Primary LLM provider ('groq')")
+    LLM_SECONDARY: str = Field(default="gemini", description="Secondary LLM provider ('gemini')")
+    LLM_FALLBACK: str = Field(default="mock", description="Final fallback provider ('mock')")
+
+    # Groq Configuration
+    GROQ_API_KEY: Optional[str] = Field(default=None, description="Groq API key")
+    GROQ_MODEL: str = Field(default="openai/gpt-oss-20b", description="Groq model identifier")
+
+    # Gemini Configuration
     GEMINI_API_KEY: Optional[str] = Field(default=None, description="Google Gemini API key")
     GEMINI_MODEL: str = Field(default="gemini-2.5-flash", description="Gemini model identifier for structured extraction")
 

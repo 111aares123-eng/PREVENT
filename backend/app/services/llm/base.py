@@ -29,7 +29,7 @@ class LLMTemporaryUnavailableError(LLMProviderError):
 
 def is_temporary_availability_error(exc: Exception) -> bool:
     """
-    Check if an exception represents temporary upstream provider availability failure (e.g. 503, 500, 502, 504, UNAVAILABLE).
+    Check if an exception represents temporary upstream provider availability failure (e.g. 429, 503, 500, 502, 504, UNAVAILABLE).
     Permanent errors (401, 403, 400, auth, config, schema) MUST return False.
     """
     if isinstance(exc, LLMConfigurationError):
@@ -39,14 +39,24 @@ def is_temporary_availability_error(exc: Exception) -> bool:
         return True
 
     # Check HTTP status / code attribute if present
-    code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+    code = getattr(exc, "status_code", None) or getattr(exc, "code", None)
     if isinstance(code, int):
-        if code in (500, 502, 503, 504):
+        if code in (429, 500, 502, 503, 504):
             return True
         if 400 <= code < 500:
             return False
 
-    # Check for google.genai.errors.ServerError
+    # Check for groq exceptions
+    try:
+        import groq
+        if isinstance(exc, (groq.RateLimitError, groq.InternalServerError, groq.APITimeoutError, groq.APIConnectionError)):
+            return True
+        if isinstance(exc, (groq.AuthenticationError, groq.PermissionDeniedError, groq.BadRequestError, groq.NotFoundError)):
+            return False
+    except ImportError:
+        pass
+
+    # Check for google.genai.errors
     try:
         from google.genai import errors as genai_errors
         if isinstance(exc, genai_errors.ServerError):
@@ -63,6 +73,7 @@ def is_temporary_availability_error(exc: Exception) -> bool:
     disqualifiers = [
         "API_KEY",
         "UNAUTHENTICATED",
+        "AUTHENTICATION",
         "PERMISSION_DENIED",
         "INVALID_ARGUMENT",
         "400",
@@ -75,6 +86,10 @@ def is_temporary_availability_error(exc: Exception) -> bool:
         return False
 
     transient_indicators = [
+        "429",
+        "RATE_LIMIT",
+        "RATE LIMIT",
+        "TOO MANY REQUESTS",
         "503",
         "UNAVAILABLE",
         "SERVICE UNAVAILABLE",
