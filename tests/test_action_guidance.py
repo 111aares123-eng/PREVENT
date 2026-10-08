@@ -27,10 +27,18 @@ from backend.app.models.asset import Asset
 from backend.app.models.event import Event
 from backend.app.models.risk_assessment import RiskAssessment
 from backend.app.services.risk_engine import RiskEngine
+from data.scenarios.seed_data import seed_database
+
+
+@pytest.fixture(autouse=True)
+def setup_db():
+    """Ensure clean baseline database state before each test."""
+    seed_database(reset=True)
 
 
 @pytest.fixture()
 def db_session():
+
     session = SessionLocal()
     try:
         yield session

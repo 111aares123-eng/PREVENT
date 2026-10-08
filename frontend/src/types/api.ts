@@ -284,3 +284,99 @@ export interface EventIngestionResponse {
   why_risk_changed: string[];
 }
 
+// ==========================================
+// REAL-WORLD EVIDENCE (NHTSA) TYPES
+// ==========================================
+
+export interface NHTSACohort {
+  make: string;
+  model: string;
+  model_year: number;
+}
+
+export interface NHTSACaseStudy {
+  title: string;
+  target_subsystem: string;
+  official_recall_campaign: string;
+  official_investigation_action: string;
+  recall_effective_date: string;
+}
+
+export interface NHTSAMetadata {
+  source: string;
+  dataset_name: string;
+  cohort: NHTSACohort;
+  case_study: NHTSACaseStudy;
+  disclaimer: string;
+}
+
+export interface NHTSASummary {
+  total_cohort_records: number;
+  target_subsystem: string;
+  target_subsystem_records: number;
+  subsystem_concentration_pct: number;
+  precursor_signals: number;
+  precursor_pct: number;
+  critical_outcomes: number;
+  critical_pct: number;
+  pre_action_signals: number;
+  post_action_signals: number;
+  lead_time_days: number | null;
+  lead_time_months: number | null;
+}
+
+export interface NHTSASafetyAction {
+  campaign_number: string;
+  action_number: string;
+  action_date: string;
+  component: string;
+  defect_summary: string;
+  consequence: string;
+  remedy: string;
+}
+
+export interface NHTSASubsystemItem {
+  subsystem: string;
+  count: number;
+  percentage: number;
+  is_target: boolean;
+}
+
+export interface NHTSATimelineItem {
+  period: string;
+  precursor_count: number;
+  critical_count: number;
+  total_count: number;
+  action_marker: boolean;
+  action_label?: string | null;
+}
+
+export interface NHTSASignalDiversityItem {
+  symptom: string;
+  count: number;
+  percentage: number;
+}
+
+export interface NHTSATraceableSignal {
+  odi_number: number;
+  filed_date: string;
+  incident_date: string;
+  context_label: string;
+  severity_tier: 'PRECURSOR' | 'CRITICAL';
+  crash: boolean;
+  injuries: number;
+  primary_subsystem: string;
+  components: string[];
+  summary_excerpt: string;
+  official_lookup_url: string;
+}
+
+export interface NHTSAEvidenceResponse {
+  metadata: NHTSAMetadata;
+  summary: NHTSASummary;
+  safety_action: NHTSASafetyAction;
+  subsystem_breakdown: NHTSASubsystemItem[];
+  temporal_timeline: NHTSATimelineItem[];
+  signal_diversity: NHTSASignalDiversityItem[];
+  traceable_signals: NHTSATraceableSignal[];
+}

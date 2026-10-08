@@ -115,4 +115,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+
+  getNhtsaEvidence: () => request<import('../types/api').NHTSAEvidenceResponse>('/api/v1/evidence/nhtsa'),
 };

@@ -11,6 +11,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing = false, onAddReport }) => {
   const location = useLocation();
   const isDetailPage = location.pathname.startsWith('/assets/');
+  const isEvidencePage = location.pathname === '/evidence';
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-slate-200">
@@ -31,7 +32,7 @@ export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing = false,
             <Link
               to="/"
               className={`transition-colors hover:text-slate-900 ${
-                !isDetailPage ? 'text-slate-900 font-semibold' : ''
+                !isDetailPage && !isEvidencePage ? 'text-slate-900 font-semibold' : ''
               }`}
             >
               Overview
@@ -51,15 +52,26 @@ export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing = false,
             >
               Assets
             </Link>
-            <button
-              type="button"
-              onClick={onAddReport}
-              className="transition-colors hover:text-slate-900 cursor-pointer"
+            <Link
+              to="/evidence"
+              className={`transition-colors hover:text-slate-900 ${
+                isEvidencePage ? 'text-slate-900 font-semibold' : ''
+              }`}
             >
-              Add Report
-            </button>
+              Real-World Evidence
+            </Link>
+            {onAddReport && (
+              <button
+                type="button"
+                onClick={onAddReport}
+                className="transition-colors hover:text-slate-900 cursor-pointer"
+              >
+                Add Report
+              </button>
+            )}
           </nav>
         </div>
+
 
         {/* Right utility area */}
         <div className="flex items-center gap-3">
