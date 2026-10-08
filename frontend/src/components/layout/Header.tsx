@@ -17,20 +17,37 @@ export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing = false,
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         {/* Brand + Navigation */}
-        <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-baseline gap-2 group">
-            <span className="text-base font-bold tracking-tight text-slate-900">
-              PREVENT
-            </span>
-            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500">
-              Safety Intelligence
-            </span>
-          </Link>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <Link to="/" className="flex items-baseline gap-2 group" title="Return to Domain Selection">
+              <span className="text-base font-bold tracking-tight text-slate-900">
+                PREVENT
+              </span>
+              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500">
+                Safety Intelligence
+              </span>
+            </Link>
+
+            {/* Active Domain Indicator */}
+            <div className="hidden lg:flex items-center gap-1.5 pl-3 border-l border-slate-200">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-medium border border-blue-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                Transportation
+              </span>
+              <Link
+                to="/"
+                className="text-[11px] text-slate-400 hover:text-slate-900 transition-colors font-medium ml-0.5"
+                title="Switch Safety Domain"
+              >
+                (Change)
+              </Link>
+            </div>
+          </div>
 
           {/* Clean minimal navigation links */}
           <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-500">
             <Link
-              to="/"
+              to="/app/transportation"
               className={`transition-colors hover:text-slate-900 ${
                 !isDetailPage && !isEvidencePage ? 'text-slate-900 font-semibold' : ''
               }`}
@@ -38,9 +55,9 @@ export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing = false,
               Overview
             </Link>
             <Link
-              to="/#fleet-roster"
+              to="/app/transportation#fleet-roster"
               onClick={(e) => {
-                if (location.pathname === '/' || location.pathname === '/dashboard') {
+                if (location.pathname === '/app/transportation' || location.pathname === '/dashboard') {
                   const el = document.getElementById('fleet-roster');
                   if (el) {
                     e.preventDefault();
@@ -77,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing = false,
         <div className="flex items-center gap-3">
           {isDetailPage && (
             <Link
-              to="/"
+              to="/app/transportation"
               className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-medium px-2.5 py-1.5 rounded-md hover:bg-slate-100 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />

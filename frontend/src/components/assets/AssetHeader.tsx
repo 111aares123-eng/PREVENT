@@ -35,7 +35,7 @@ export const AssetHeader: React.FC<AssetHeaderProps> = ({
     <div className="border-b border-slate-200 pb-6 bg-white p-6 rounded-lg border">
       {/* Return link */}
       <Link
-        to="/"
+        to="/app/transportation"
         className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors mb-4 font-medium"
       >
         <ArrowLeft className="w-3.5 h-3.5" />

@@ -142,7 +142,7 @@ export const AssetDetail: React.FC = () => {
               Asset ID &quot;{assetId}&quot; is not registered in the PREVENT fleet intelligence database.
             </p>
             <Link
-              to="/"
+              to="/app/transportation"
               className="inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded bg-slate-900 hover:bg-slate-800 text-white transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
