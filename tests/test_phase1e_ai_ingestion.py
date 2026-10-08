@@ -33,11 +33,13 @@ from backend.app.schemas.event import (
     ExtractedEventData
 )
 from backend.app.services.event_ingestion import EventIngestionService
+from unittest.mock import MagicMock
 from backend.app.services.llm import (
     MockProvider,
     GeminiProvider,
     LLMConfigurationError,
     LLMExtractionError,
+    LLMTemporaryUnavailableError,
     get_llm_provider
 )
 from backend.app.api.deps import get_llm_provider as get_llm_provider_dep
@@ -471,3 +473,141 @@ def test_invalid_event_cannot_be_persisted(client, db_session):
     # Verify database was not modified
     events_count_after = db_session.query(Event).count()
     assert events_count_after == events_count_before
+
+
+# ---------------------------------------------------------------------------
+# 15. Gemini Controlled Fallback Tests (A, B, C, D, E)
+# ---------------------------------------------------------------------------
+
+def test_gemini_success_extraction_returns_gemini_provider(db_session):
+    """Test A: When Gemini extraction succeeds, provider is 'gemini' and fallback is False."""
+    provider = GeminiProvider(api_key="mock-test-key")
+    mock_json = (
+        '{"asset_id": "BUS-142", "event_type": "operational_report", "subsystem": "braking", '
+        '"severity": 4, "description": "Brake pedal abnormal travel", "source": "driver", '
+        '"reporter_role": "driver"}'
+    )
+    mock_response = MagicMock()
+    mock_response.text = mock_json
+    provider._client = MagicMock()
+    provider._client.models.generate_content.return_value = mock_response
+
+    service = EventIngestionService(default_provider=provider)
+    res = service.extract_from_report("Driver reported BUS-142 brake issue", db=db_session, provider=provider)
+
+    assert res.validation_status == "valid"
+    assert res.provider == "gemini"
+    assert res.fallback_used is False
+    assert res.fallback_message is None
+    assert res.extracted_event is not None
+    assert res.extracted_event.asset_id == "BUS-142"
+    assert res.extracted_event.subsystem == Subsystem.BRAKING
+
+
+def test_gemini_503_temporary_unavailable_triggers_mock_fallback(db_session):
+    """Test B: When Gemini returns HTTP 503 UNAVAILABLE, controlled fallback activates with provider='mock'."""
+    from google.genai import errors as genai_errors
+
+    provider = GeminiProvider(api_key="mock-test-key")
+    provider._client = MagicMock()
+    provider._client.models.generate_content.side_effect = genai_errors.ServerError(
+        503, "The service is temporarily unavailable due to high demand."
+    )
+
+    service = EventIngestionService(default_provider=provider)
+    report = "Driver reported that BUS-142 required significantly more distance to stop during heavy rain."
+    res = service.extract_from_report(report, db=db_session, provider=provider)
+
+    assert res.validation_status == "valid"
+    assert res.provider == "mock"
+    assert res.fallback_used is True
+    assert res.fallback_message == "Gemini temporarily unavailable — using local fallback."
+    assert res.extracted_event is not None
+    assert res.extracted_event.asset_id == "BUS-142"
+    assert res.extracted_event.subsystem == Subsystem.BRAKING
+    assert res.extracted_event.severity == 4
+
+
+def test_gemini_500_server_error_triggers_mock_fallback(db_session):
+    """Test C: When Gemini returns HTTP 500 ServerError, fallback activates."""
+    from google.genai import errors as genai_errors
+
+    provider = GeminiProvider(api_key="mock-test-key")
+    provider._client = MagicMock()
+    provider._client.models.generate_content.side_effect = genai_errors.ServerError(
+        500, "Internal Server Error in Gemini API backend."
+    )
+
+    service = EventIngestionService(default_provider=provider)
+    report = "Driver reported that BUS-142 required significantly more distance to stop during heavy rain."
+    res = service.extract_from_report(report, db=db_session, provider=provider)
+
+    assert res.validation_status == "valid"
+    assert res.provider == "mock"
+    assert res.fallback_used is True
+    assert res.fallback_message == "Gemini temporarily unavailable — using local fallback."
+    assert res.extracted_event is not None
+    assert res.extracted_event.asset_id == "BUS-142"
+
+
+def test_gemini_auth_or_config_error_does_not_fall_back(db_session):
+    """Test D: Authentication/configuration error must NOT silently fall back; returns error status."""
+    from google.genai import errors as genai_errors
+
+    provider = GeminiProvider(api_key="mock-test-key")
+    provider._client = MagicMock()
+    provider._client.models.generate_content.side_effect = genai_errors.ClientError(
+        401, "API_KEY_INVALID: API key not valid. Please pass a valid API key."
+    )
+
+    service = EventIngestionService(default_provider=provider)
+    res = service.extract_from_report("Some report text", db=db_session, provider=provider)
+
+    assert res.validation_status == "invalid"
+    assert res.provider == "gemini"
+    assert res.fallback_used is False
+    assert res.extracted_event is None
+    assert any("AI extraction failed" in err for err in res.validation_errors)
+
+
+def test_fallback_extraction_does_not_mutate_db(db_session):
+    """Test E: Verification that fallback extraction preview strictly avoids mutating database."""
+    from google.genai import errors as genai_errors
+
+    events_before = db_session.query(Event).count()
+    assessments_before = db_session.query(RiskAssessment).count()
+
+    provider = GeminiProvider(api_key="mock-test-key")
+    provider._client = MagicMock()
+    provider._client.models.generate_content.side_effect = genai_errors.ServerError(
+        503, "The model is overloaded. Please try again later."
+    )
+
+    service = EventIngestionService(default_provider=provider)
+    for _ in range(3):
+        res = service.extract_from_report(
+            "Driver reported that BUS-142 brake shudder occurred",
+            db=db_session,
+            provider=provider
+        )
+        assert res.validation_status == "valid"
+        assert res.fallback_used is True
+        assert res.provider == "mock"
+
+    events_after = db_session.query(Event).count()
+    assessments_after = db_session.query(RiskAssessment).count()
+
+    assert events_after == events_before
+    assert assessments_after == assessments_before
+
+
+def test_api_extract_endpoint_returns_fallback_fields(client):
+    """Verify POST /api/v1/events/extract JSON schema includes fallback_used and fallback_message."""
+    resp = client.post("/api/v1/events/extract", json={
+        "report_text": "Driver reported that BUS-142 required significantly more distance to stop."
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "fallback_used" in data
+    assert "fallback_message" in data
+    assert data["fallback_used"] is False

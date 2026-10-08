@@ -9,7 +9,9 @@ from backend.app.services.llm.base import (
     LLMProvider,
     LLMProviderError,
     LLMConfigurationError,
-    LLMExtractionError
+    LLMExtractionError,
+    LLMTemporaryUnavailableError,
+    is_temporary_availability_error
 )
 from backend.app.services.llm.mock_provider import MockProvider
 from backend.app.services.llm.gemini_provider import GeminiProvider
@@ -35,6 +37,8 @@ __all__ = [
     "LLMProviderError",
     "LLMConfigurationError",
     "LLMExtractionError",
+    "LLMTemporaryUnavailableError",
+    "is_temporary_availability_error",
     "GeminiProvider",
     "MockProvider",
     "get_llm_provider"

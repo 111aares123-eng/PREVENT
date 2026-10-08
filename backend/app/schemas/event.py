@@ -97,6 +97,8 @@ class EventExtractResponse(BaseModel):
     validation_status: str = Field(..., description="'valid' or 'invalid'")
     validation_errors: Optional[List[str]] = Field(default=None, description="List of validation errors if invalid")
     raw_extraction: Optional[Dict[str, Any]] = Field(default=None, description="Raw extraction payload before validation")
+    fallback_used: bool = Field(default=False, description="Whether fallback was activated due to temporary upstream availability error")
+    fallback_message: Optional[str] = Field(default=None, description="Human-readable notice when fallback provider was used")
 
 
 class EventIngestionResponse(BaseModel):

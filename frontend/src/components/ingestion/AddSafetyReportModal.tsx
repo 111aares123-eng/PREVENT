@@ -58,6 +58,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [activeProvider, setActiveProvider] = useState<string>('gemini');
+  const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
 
   // Step 2: Extracted & editable state
   const [isEditing, setIsEditing] = useState(false);
@@ -86,6 +87,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
     setReportText('');
     setIsExtracting(false);
     setExtractionError(null);
+    setFallbackNotice(null);
     setIsEditing(false);
     setValidationErrors([]);
     setIsIngesting(false);
@@ -120,6 +122,14 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
     try {
       const response = await api.extractEvent(reportText);
       setActiveProvider(response.provider);
+
+      if (response.fallback_used || response.fallback_message) {
+        setFallbackNotice(
+          response.fallback_message || 'Gemini temporarily unavailable — using local fallback.'
+        );
+      } else {
+        setFallbackNotice(null);
+      }
 
       if (response.validation_status === 'valid' && response.extracted_event) {
         const ev = response.extracted_event;
@@ -245,9 +255,16 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 uppercase">
                   AI Ingestion
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-orange-950/60 text-orange-400 border border-orange-800/40 uppercase">
-                  Provider: {activeProvider}
-                </span>
+                {fallbackNotice ? (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/70 text-amber-300 border border-amber-700/60 uppercase flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 text-amber-400" />
+                    <span>Fallback: {activeProvider}</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-orange-950/60 text-orange-400 border border-orange-800/40 uppercase">
+                    Provider: {activeProvider}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 Connecting human safety reports into PREVENT's explainable intelligence timeline.
@@ -347,6 +364,32 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
           {/* STEP 2: PREVIEW & VERIFY EXTRACTED EVENT */}
           {step === 'preview' && (
             <div className="space-y-4">
+              {/* Fallback Notice Banner */}
+              {fallbackNotice && (
+                <div
+                  id="fallback-notice-banner"
+                  className="rounded-xl border border-amber-500/50 bg-amber-950/40 p-3.5 flex items-start gap-3 text-xs text-amber-200 shadow-lg shadow-amber-950/20"
+                >
+                  <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold uppercase tracking-wider text-amber-300 text-xs">
+                        Fallback Extraction Activated
+                      </span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200 border border-amber-700/50">
+                        PROVIDER: MOCK
+                      </span>
+                    </div>
+                    <p className="font-semibold text-amber-200">
+                      Gemini temporarily unavailable — using local fallback.
+                    </p>
+                    <p className="text-[11px] text-amber-300/80">
+                      Due to temporary upstream capacity limits, this report was extracted using PREVENT's local heuristic parser. Review the fields below before persisting.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Header Banner */}
               <div className="flex items-center justify-between rounded-xl bg-slate-950/70 border border-slate-800 p-3.5">
                 <div className="flex items-center gap-2.5">

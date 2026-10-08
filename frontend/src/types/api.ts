@@ -185,6 +185,8 @@ export interface EventExtractResponse {
   validation_status: 'valid' | 'invalid';
   validation_errors?: string[] | null;
   raw_extraction?: Record<string, any> | null;
+  fallback_used?: boolean;
+  fallback_message?: string | null;
 }
 
 export interface EventCreateRequest {

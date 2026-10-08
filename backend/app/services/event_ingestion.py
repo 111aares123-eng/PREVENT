@@ -24,7 +24,12 @@ from backend.app.schemas.event import (
     EventIngestionResponse
 )
 from backend.app.core.config import settings
-from backend.app.services.llm import LLMProvider, get_llm_provider
+from backend.app.services.llm import (
+    LLMProvider,
+    MockProvider,
+    get_llm_provider,
+    is_temporary_availability_error
+)
 from backend.app.services.risk_engine import RiskEngine
 
 
@@ -57,19 +62,45 @@ class EventIngestionService:
                 provider=getattr(settings, "LLM_PROVIDER", "gemini"),
                 validation_status="invalid",
                 validation_errors=[f"AI extraction unavailable: {str(exc)}"],
-                raw_extraction=None
+                raw_extraction=None,
+                fallback_used=False,
+                fallback_message=None
             )
+
+        fallback_used = False
+        fallback_message: Optional[str] = None
 
         try:
             raw_data = active_provider.extract_event(report_text)
         except Exception as exc:
-            return EventExtractResponse(
-                extracted_event=None,
-                provider=provider_name,
-                validation_status="invalid",
-                validation_errors=[f"AI extraction failed: {str(exc)}"],
-                raw_extraction=None
-            )
+            # Check if temporary provider availability failure (e.g. HTTP 503, 500, UNAVAILABLE) and active provider is not mock
+            if provider_name != "mock" and is_temporary_availability_error(exc):
+                try:
+                    mock_fallback = MockProvider()
+                    raw_data = mock_fallback.extract_event(report_text)
+                    provider_name = mock_fallback.provider_name  # "mock"
+                    fallback_used = True
+                    fallback_message = "Gemini temporarily unavailable — using local fallback."
+                except Exception as fallback_exc:
+                    return EventExtractResponse(
+                        extracted_event=None,
+                        provider="mock",
+                        validation_status="invalid",
+                        validation_errors=[f"AI extraction fallback failed: {str(fallback_exc)}"],
+                        raw_extraction=None,
+                        fallback_used=True,
+                        fallback_message="Gemini temporarily unavailable — using local fallback."
+                    )
+            else:
+                return EventExtractResponse(
+                    extracted_event=None,
+                    provider=provider_name,
+                    validation_status="invalid",
+                    validation_errors=[f"AI extraction failed: {str(exc)}"],
+                    raw_extraction=None,
+                    fallback_used=False,
+                    fallback_message=None
+                )
 
         if not isinstance(raw_data, dict):
             return EventExtractResponse(
@@ -77,7 +108,9 @@ class EventIngestionService:
                 provider=provider_name,
                 validation_status="invalid",
                 validation_errors=["Provider returned non-dictionary output."],
-                raw_extraction=None
+                raw_extraction=None,
+                fallback_used=fallback_used,
+                fallback_message=fallback_message
             )
 
         # Validate structured fields through Pydantic
@@ -95,7 +128,9 @@ class EventIngestionService:
                 provider=provider_name,
                 validation_status="invalid",
                 validation_errors=error_details,
-                raw_extraction=raw_data
+                raw_extraction=raw_data,
+                fallback_used=fallback_used,
+                fallback_message=fallback_message
             )
 
         # Optional database asset check if db session provided
@@ -113,7 +148,9 @@ class EventIngestionService:
                 provider=provider_name,
                 validation_status="invalid",
                 validation_errors=validation_errors,
-                raw_extraction=raw_data
+                raw_extraction=raw_data,
+                fallback_used=fallback_used,
+                fallback_message=fallback_message
             )
 
         return EventExtractResponse(
@@ -121,7 +158,9 @@ class EventIngestionService:
             provider=provider_name,
             validation_status="valid",
             validation_errors=None,
-            raw_extraction=raw_data
+            raw_extraction=raw_data,
+            fallback_used=fallback_used,
+            fallback_message=fallback_message
         )
 
     def ingest_confirmed_event(

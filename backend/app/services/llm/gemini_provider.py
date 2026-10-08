@@ -13,7 +13,9 @@ from backend.app.core.config import settings
 from backend.app.services.llm.base import (
     LLMProvider,
     LLMConfigurationError,
-    LLMExtractionError
+    LLMExtractionError,
+    LLMTemporaryUnavailableError,
+    is_temporary_availability_error
 )
 from backend.app.services.llm.prompts import EVENT_EXTRACTION_SYSTEM_PROMPT
 
@@ -84,7 +86,13 @@ class GeminiProvider(LLMProvider):
 
         except json.JSONDecodeError as jde:
             raise LLMExtractionError(f"Failed to parse Gemini output as JSON: {str(jde)}") from jde
-        except LLMExtractionError:
+        except (LLMExtractionError, LLMConfigurationError, LLMTemporaryUnavailableError):
             raise
         except Exception as exc:
+            if is_temporary_availability_error(exc):
+                code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+                raise LLMTemporaryUnavailableError(
+                    f"Gemini service temporarily unavailable: {str(exc)}",
+                    status_code=code or 503
+                ) from exc
             raise LLMExtractionError(f"Gemini API request failed: {str(exc)}") from exc
