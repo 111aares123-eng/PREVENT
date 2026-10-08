@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Info } from 'lucide-react';
 import type { AssetInfo, RiskLevel, TrendDirection } from '../../types/api';
 
 interface AssetHeaderProps {
@@ -142,15 +142,21 @@ export const AssetHeader: React.FC<AssetHeaderProps> = ({
             </span>
           </div>
 
-          <div className="border-l border-slate-200 pl-6 sm:pl-8">
-            <span className="block text-[10px] uppercase font-sans tracking-wider text-slate-500 font-semibold">
-              Evidence Confidence
-            </span>
+          <div
+            className="border-l border-slate-200 pl-6 sm:pl-8 group cursor-help"
+            title="Based on supporting signal volume and source diversity. Not a probability of failure."
+          >
+            <div className="flex items-center gap-1">
+              <span className="block text-[10px] uppercase font-sans tracking-wider text-slate-500 font-semibold">
+                Evidence Sufficiency
+              </span>
+              <Info className="w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-colors" />
+            </div>
             <span className="text-sm font-bold text-slate-900 block mt-0.5">
               {Math.round(confidence)}%
             </span>
             <span className="text-[11px] text-slate-600 font-sans block">
-              Corroborated
+              Source Diversity
             </span>
           </div>
         </div>
