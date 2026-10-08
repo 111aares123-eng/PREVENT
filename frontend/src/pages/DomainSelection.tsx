@@ -6,7 +6,6 @@ import {
   HardHat,
   Zap,
   Truck,
-  ArrowRight,
   Shield,
   Layers,
   Activity,
@@ -21,7 +20,7 @@ import {
 interface DomainSpec {
   id: string;
   name: string;
-  badge: 'Live Demo' | 'Example Scenario';
+  badge: 'LIVE DEMO' | 'ILLUSTRATIVE SCENARIO';
   isLive: boolean;
   icon: React.ReactNode;
   tagline: string;
@@ -41,11 +40,11 @@ interface DomainSpec {
 const DOMAINS: DomainSpec[] = [
   {
     id: 'transportation',
-    name: 'Transportation & Transit',
-    badge: 'Live Demo',
+    name: 'Transportation',
+    badge: 'LIVE DEMO',
     isLive: true,
     route: '/app/transportation',
-    icon: <Bus className="w-6 h-6 text-indigo-600" />,
+    icon: <Bus className="w-5 h-5 text-slate-800" />,
     tagline: 'Active Production Demonstration',
     description:
       'Monitor safety signals across vehicles, assets, inspections, driver logs, passenger reports, and near-misses.',
@@ -53,10 +52,10 @@ const DOMAINS: DomainSpec[] = [
   },
   {
     id: 'manufacturing',
-    name: 'Manufacturing & Heavy Industry',
-    badge: 'Example Scenario',
+    name: 'Manufacturing',
+    badge: 'ILLUSTRATIVE SCENARIO',
     isLive: false,
-    icon: <Factory className="w-6 h-6 text-slate-700" />,
+    icon: <Factory className="w-5 h-5 text-slate-700" />,
     tagline: 'Industrial Machinery & Production Lines',
     description:
       'Detect converging warning signals across industrial assets, automated stamping presses, and production cells.',
@@ -80,10 +79,10 @@ const DOMAINS: DomainSpec[] = [
   },
   {
     id: 'construction',
-    name: 'Construction & Job Sites',
-    badge: 'Example Scenario',
+    name: 'Construction',
+    badge: 'ILLUSTRATIVE SCENARIO',
     isLive: false,
-    icon: <HardHat className="w-6 h-6 text-slate-700" />,
+    icon: <HardHat className="w-5 h-5 text-slate-700" />,
     tagline: 'Heavy Equipment & Site Safety',
     description:
       'Connect site observations, heavy equipment warnings, subcontractor inspections, and near-misses.',
@@ -107,10 +106,10 @@ const DOMAINS: DomainSpec[] = [
   },
   {
     id: 'utilities',
-    name: 'Utilities & Grid Infrastructure',
-    badge: 'Example Scenario',
+    name: 'Utilities',
+    badge: 'ILLUSTRATIVE SCENARIO',
     isLive: false,
-    icon: <Zap className="w-6 h-6 text-slate-700" />,
+    icon: <Zap className="w-5 h-5 text-slate-700" />,
     tagline: 'High-Voltage & Distribution Assets',
     description:
       'Correlate infrastructure warnings, thermal inspections, lineman logs, and operational telemetry events.',
@@ -134,10 +133,10 @@ const DOMAINS: DomainSpec[] = [
   },
   {
     id: 'logistics',
-    name: 'Logistics & Warehousing',
-    badge: 'Example Scenario',
+    name: 'Logistics',
+    badge: 'ILLUSTRATIVE SCENARIO',
     isLive: false,
-    icon: <Truck className="w-6 h-6 text-slate-700" />,
+    icon: <Truck className="w-5 h-5 text-slate-700" />,
     tagline: 'Material Handling & Automated Fulfillment',
     description:
       'Identify emerging safety risks across sortation equipment, material handling fleets, and high-velocity operations.',
@@ -185,25 +184,25 @@ export const DomainSelection: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans">
       {/* Top Header / Branding */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-baseline gap-2.5 group">
-              <span className="text-xl font-bold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
+            <Link to="/" className="flex items-baseline gap-2 group">
+              <span className="text-base font-bold tracking-tight text-slate-900">
                 PREVENT
               </span>
-              <span className="text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500">
                 Safety Intelligence Platform
               </span>
             </Link>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link
               to="/evidence"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors px-3 py-1.5 rounded-md hover:bg-slate-100"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors px-2.5 py-1.5 rounded-md hover:bg-slate-100"
             >
               <FileCheck2 className="w-3.5 h-3.5 text-slate-400" />
               <span>Real-World Evidence (NHTSA)</span>
@@ -211,71 +210,67 @@ export const DomainSelection: React.FC = () => {
 
             <Link
               to="/app/transportation"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-xs shadow-indigo-600/20"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white transition-colors shadow-xs"
             >
-              <span>Launch Live Demo</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span>Enter Dashboard →</span>
             </Link>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
         {/* Hero Section */}
         <div className="text-center max-w-3xl mx-auto space-y-4 pt-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-mono font-medium">
-            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
-            <span>DOMAIN-AGNOSTIC SAFETY INTELLIGENCE LAYER</span>
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-mono uppercase tracking-wider font-semibold">
+            <span>Safety Intelligence Platform</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 leading-[1.15]">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
             Connecting the warnings <br className="hidden sm:inline" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600">
-              before they become incidents.
-            </span>
+            before they become incidents.
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl mx-auto">
             Connect scattered safety signals, identify escalating risk, understand why it matters now, and turn intelligence into actionable human intervention.
           </p>
 
           <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs font-mono text-slate-500">
-            <span className="px-2.5 py-1 rounded-md bg-white border border-slate-200 shadow-2xs">
-              Deterministic Math
+            <span className="px-2.5 py-1 rounded bg-white border border-slate-200 shadow-2xs">
+              Deterministic Scoring
             </span>
             <span className="text-slate-300">•</span>
-            <span className="px-2.5 py-1 rounded-md bg-white border border-slate-200 shadow-2xs">
-              Multi-Source Corroboration
+            <span className="px-2.5 py-1 rounded bg-white border border-slate-200 shadow-2xs">
+              Cross-Role Corroboration
             </span>
             <span className="text-slate-300">•</span>
-            <span className="px-2.5 py-1 rounded-md bg-white border border-slate-200 shadow-2xs">
-              Multilingual Voice Intake
+            <span className="px-2.5 py-1 rounded bg-white border border-slate-200 shadow-2xs">
+              Temporal Velocity
             </span>
             <span className="text-slate-300">•</span>
-            <span className="px-2.5 py-1 rounded-md bg-white border border-slate-200 shadow-2xs">
+            <span className="px-2.5 py-1 rounded bg-white border border-slate-200 shadow-2xs">
               Closed-Loop Protocols
             </span>
           </div>
         </div>
 
         {/* Domain Selection Grid Section */}
-        <section aria-labelledby="domains-heading" className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-3 border-b border-slate-200">
+        <section aria-labelledby="domains-heading" className="space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 pb-3 border-b border-slate-200">
             <div>
               <h2 id="domains-heading" className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500">
-                Select Your Safety Domain
+                SELECT YOUR SAFETY DOMAIN
               </h2>
-              <p className="text-xl font-bold tracking-tight text-slate-900 mt-1">
+              <p className="text-lg font-bold tracking-tight text-slate-900 mt-0.5">
                 Operational Environments
               </p>
             </div>
-            <p className="text-xs text-slate-500 max-w-md">
-              Choose an environment below. Transportation hosts the fully interactive live system; additional domains provide architectural specifications.
+            <p className="text-xs text-slate-500">
+              Transportation hosts the live demo; other domains provide illustrative architectural scenarios.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {DOMAINS.map((domain) => {
               const isPrimary = domain.isLive;
 
@@ -292,61 +287,61 @@ export const DomainSelection: React.FC = () => {
                   tabIndex={0}
                   role="button"
                   aria-label={`${domain.name}: ${domain.badge}. ${domain.description}`}
-                  className={`group relative rounded-2xl border p-6 flex flex-col justify-between transition-all duration-200 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                  className={`group relative rounded-lg border p-5 flex flex-col justify-between transition-colors duration-150 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${
                     isPrimary
-                      ? 'bg-gradient-to-b from-white to-indigo-50/30 border-indigo-300 shadow-md hover:shadow-lg hover:border-indigo-400 ring-1 ring-indigo-500/20'
-                      : 'bg-white border-slate-200 shadow-xs hover:border-slate-300 hover:shadow-md'
+                      ? 'bg-white border-slate-300 border-l-4 border-l-slate-900 shadow-xs hover:border-slate-400'
+                      : 'bg-white border-slate-200 shadow-xs hover:border-slate-300'
                   }`}
                 >
-                  <div className="space-y-4">
+                  <div className="space-y-3.5">
                     {/* Top Row: Icon + Badge */}
                     <div className="flex items-center justify-between">
                       <div
-                        className={`p-3 rounded-xl ${
+                        className={`p-2 rounded ${
                           isPrimary
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
-                        } transition-colors`}
+                            ? 'bg-slate-100 text-slate-900'
+                            : 'bg-slate-50 text-slate-600 border border-slate-100'
+                        }`}
                       >
                         {domain.icon}
                       </div>
 
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold tracking-wide ${
+                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${
                           isPrimary
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : 'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}
                       >
-                        {isPrimary && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+                        {isPrimary && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />}
                         {domain.badge}
                       </span>
                     </div>
 
                     {/* Domain Title & Tagline */}
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors flex items-center gap-1.5">
+                      <h3 className="text-base font-bold text-slate-900 group-hover:text-slate-800 transition-colors flex items-center justify-between">
                         <span>{domain.name}</span>
                         {isPrimary && (
-                          <ChevronRight className="w-4 h-4 text-indigo-500 group-hover:translate-x-0.5 transition-transform" />
+                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 transition-colors" />
                         )}
                       </h3>
-                      <p className="text-xs font-mono text-slate-400 mt-0.5">{domain.tagline}</p>
+                      <p className="text-[11px] font-mono text-slate-500 mt-0.5">{domain.tagline}</p>
                     </div>
 
                     {/* Description */}
                     <p className="text-xs text-slate-600 leading-relaxed">{domain.description}</p>
 
                     {/* Subsystem tags */}
-                    <div className="pt-2">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-1.5">
+                    <div className="pt-1">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-1">
                         Key Subsystems
                       </span>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1">
                         {domain.subsystems.map((sub) => (
                           <span
                             key={sub}
-                            className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium font-mono"
+                            className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium font-mono border border-slate-200/60"
                           >
                             {sub}
                           </span>
@@ -356,23 +351,23 @@ export const DomainSelection: React.FC = () => {
                   </div>
 
                   {/* Bottom Action Footer */}
-                  <div className="pt-6 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
                     {isPrimary ? (
                       <>
-                        <span className="font-semibold text-indigo-600 group-hover:text-indigo-700 flex items-center gap-1">
-                          Enter Operational Dashboard
+                        <span className="font-medium text-slate-600">
+                          Active Fleet Surveillance
                         </span>
-                        <span className="p-1 rounded-full bg-indigo-600 text-white group-hover:translate-x-1 transition-transform">
-                          <ArrowRight className="w-3.5 h-3.5" />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-900 text-white font-medium hover:bg-slate-800 transition-colors">
+                          <span>Enter Dashboard →</span>
                         </span>
                       </>
                     ) : (
                       <>
-                        <span className="font-medium text-slate-500 group-hover:text-slate-800">
-                          View Scenario Specification
+                        <span className="font-medium text-slate-500">
+                          Illustrative Scenario
                         </span>
-                        <span className="text-slate-400 group-hover:text-slate-600 font-mono text-[11px]">
-                          Specification →
+                        <span className="text-slate-700 group-hover:text-slate-900 font-medium text-xs transition-colors flex items-center gap-0.5">
+                          <span>View Example →</span>
                         </span>
                       </>
                     )}
@@ -386,83 +381,85 @@ export const DomainSelection: React.FC = () => {
         {/* Bottom Section: Pipeline Architecture & Core Thesis */}
         <section
           aria-labelledby="architecture-heading"
-          className="rounded-2xl border border-slate-200 bg-white p-8 sm:p-10 shadow-xs space-y-8"
+          className="rounded-lg border border-slate-200 bg-white p-6 sm:p-7 shadow-xs space-y-6"
         >
-          <div className="text-center max-w-2xl mx-auto space-y-2">
-            <h2 id="architecture-heading" className="text-2xl font-bold tracking-tight text-slate-900">
-              One intelligence layer. Multiple safety domains.
-            </h2>
-            <p className="text-xs font-mono uppercase tracking-wider text-indigo-600 font-semibold">
-              The domain changes. The safety intelligence doesn't.
-            </p>
-            <p className="text-xs text-slate-500 leading-relaxed pt-1">
-              PREVENT separates domain entities from the invariant physics of failure escalation. Regardless of whether the asset is a transit vehicle, wind turbine, or hospital system, the safety workflow remains strictly uniform:
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 pb-3 border-b border-slate-200">
+            <div>
+              <h2 id="architecture-heading" className="text-base font-bold tracking-tight text-slate-900">
+                One intelligence layer. Multiple safety domains.
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                PREVENT adapts to the domain without changing the underlying safety intelligence.
+              </p>
+            </div>
+            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
+              INVARIANT PIPELINE ARCHITECTURE
+            </div>
           </div>
 
           {/* 5-Stage Pipeline Visualizer */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-2">
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="p-3.5 rounded border border-slate-200 bg-slate-50/70 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">
-                  Step 01
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                  01 · DETECT
                 </span>
-                <Radio className="w-4 h-4 text-indigo-600" />
+                <Radio className="w-3.5 h-3.5 text-slate-500" />
               </div>
-              <h3 className="font-bold text-slate-900 text-sm">DETECT</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Ingest multilingual voice logs, shift notes, inspections, and work orders with zero form friction.
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wide">Signal Ingestion</h3>
+              <p className="text-xs text-slate-600 leading-relaxed font-sans">
+                Ingest multilingual voice logs, shift notes, inspections, and sensor telemetry with zero friction.
               </p>
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <div className="p-3.5 rounded border border-slate-200 bg-slate-50/70 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-700">
-                  Step 02
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                  02 · CORRELATE
                 </span>
-                <Layers className="w-4 h-4 text-blue-600" />
+                <Layers className="w-3.5 h-3.5 text-slate-500" />
               </div>
-              <h3 className="font-bold text-slate-900 text-sm">CORRELATE</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wide">Multi-Source Fusion</h3>
+              <p className="text-xs text-slate-600 leading-relaxed font-sans">
                 Compound risk across independent reporting roles and calculate dynamic temporal interval acceleration.
               </p>
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <div className="p-3.5 rounded border border-slate-200 bg-slate-50/70 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-700">
-                  Step 03
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                  03 · EXPLAIN
                 </span>
-                <Activity className="w-4 h-4 text-amber-600" />
+                <Activity className="w-3.5 h-3.5 text-slate-500" />
               </div>
-              <h3 className="font-bold text-slate-900 text-sm">EXPLAIN</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Audit every point in the 0–100 score with the Factor Waterfall and deterministic "Why Now?" attribution.
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wide">Why Now? Audit</h3>
+              <p className="text-xs text-slate-600 leading-relaxed font-sans">
+                Audit every point in the 0–100 score with the Factor Waterfall and deterministic attribution.
               </p>
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <div className="p-3.5 rounded border border-slate-200 bg-slate-50/70 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-100 text-rose-700">
-                  Step 04
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                  04 · ACT
                 </span>
-                <Shield className="w-4 h-4 text-rose-600" />
+                <Shield className="w-3.5 h-3.5 text-slate-500" />
               </div>
-              <h3 className="font-bold text-slate-900 text-sm">ACT</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wide">Prescriptive Protocols</h3>
+              <p className="text-xs text-slate-600 leading-relaxed font-sans">
                 Provide role-tailored prescriptive protocols translated deterministically for frontline execution.
               </p>
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <div className="p-3.5 rounded border border-slate-200 bg-slate-50/70 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">
-                  Step 05
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                  05 · VERIFY
                 </span>
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
               </div>
-              <h3 className="font-bold text-slate-900 text-sm">VERIFY</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wide">Closed-Loop Recovery</h3>
+              <p className="text-xs text-slate-600 leading-relaxed font-sans">
                 Confirm mitigation outcomes through closed-loop reporting and apply mathematical recency risk decay.
               </p>
             </div>
@@ -471,7 +468,7 @@ export const DomainSelection: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-8 mt-12">
+      <footer className="border-t border-slate-200 bg-white py-6 mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 font-mono">
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-800">PREVENT</span>
@@ -480,7 +477,7 @@ export const DomainSelection: React.FC = () => {
 
           <div className="flex items-center gap-6">
             <Link to="/app/transportation" className="hover:text-slate-900 transition-colors">
-              Launch Live Demo
+              Transportation Dashboard
             </Link>
             <Link to="/evidence" className="hover:text-slate-900 transition-colors">
               NHTSA Evidence Track
@@ -489,28 +486,28 @@ export const DomainSelection: React.FC = () => {
         </div>
       </footer>
 
-      {/* Example Scenario Modal */}
+      {/* Illustrative Scenario Modal */}
       {selectedSpec && selectedSpec.spec && (
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs"
         >
-          <div className="bg-white rounded-2xl max-w-2xl w-full border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-2xl w-full border border-slate-200 shadow-xl p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100">
+            <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-200">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-slate-100 text-slate-800">
+                <div className="p-2 rounded bg-slate-100 text-slate-700">
                   {selectedSpec.icon}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                      EXAMPLE SCENARIO SPECIFICATION
+                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                      ILLUSTRATIVE SCENARIO
                     </span>
                   </div>
-                  <h3 id="modal-title" className="text-xl font-bold text-slate-900 mt-1">
+                  <h3 id="modal-title" className="text-lg font-bold text-slate-900 mt-0.5">
                     {selectedSpec.name}
                   </h3>
                   <p className="text-xs text-slate-500 font-mono">{selectedSpec.tagline}</p>
@@ -521,54 +518,54 @@ export const DomainSelection: React.FC = () => {
                 type="button"
                 onClick={() => setSelectedSpec(null)}
                 aria-label="Close specification dialog"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Invariance Framing Banner */}
-            <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-start gap-2.5">
-              <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+            <div className="p-3 rounded bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-start gap-2.5">
+              <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
               <p className="leading-relaxed">
-                <strong>Architectural Invariance:</strong> This specification demonstrates how PREVENT's schema and 6-factor deterministic engine generalize to {selectedSpec.name.toLowerCase()} without altering risk scoring algorithms.
+                <strong>Illustrative scenario:</strong> Demonstrating how PREVENT's intelligence layer can apply to {selectedSpec.name.toLowerCase()} without changing the underlying safety intelligence engine.
               </p>
             </div>
 
             {/* Scenario Breakdown */}
-            <div className="space-y-4 text-xs">
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                <span className="font-mono uppercase font-bold text-[10px] text-slate-500">
+            <div className="space-y-3 text-xs">
+              <div className="p-3 rounded bg-white border border-slate-200 space-y-1">
+                <span className="font-mono uppercase font-semibold text-[10px] text-slate-500">
                   Sample Asset Entity
                 </span>
-                <p className="font-semibold text-slate-900 text-sm">
+                <p className="font-semibold text-slate-900 font-mono text-sm">
                   {selectedSpec.spec.sampleAsset}
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                <span className="font-mono uppercase font-bold text-[10px] text-slate-500 block">
+              <div className="p-3 rounded bg-white border border-slate-200 space-y-2">
+                <span className="font-mono uppercase font-semibold text-[10px] text-slate-500 block">
                   Dispersed Observational Signals (Fragmented Sources)
                 </span>
                 <ul className="space-y-1.5 text-slate-700">
                   {selectedSpec.spec.signalSources.map((source, idx) => (
                     <li key={idx} className="flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0 mt-1.5" />
                       <span>{source}</span>
                     </li>
                   ))}
                 </ul>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200 space-y-1 text-amber-950">
-                <span className="font-mono uppercase font-bold text-[10px] text-amber-800">
+              <div className="p-3 rounded bg-amber-50/70 border border-amber-200 space-y-1 text-amber-950">
+                <span className="font-mono uppercase font-semibold text-[10px] text-amber-800">
                   Signal Convergence Anomaly
                 </span>
                 <p className="leading-relaxed">{selectedSpec.spec.convergenceStory}</p>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-200 space-y-1 text-indigo-950">
-                <span className="font-mono uppercase font-bold text-[10px] text-indigo-800">
+              <div className="p-3 rounded bg-slate-50 border border-slate-200 space-y-1 text-slate-900">
+                <span className="font-mono uppercase font-semibold text-[10px] text-slate-500">
                   Prescriptive Recommended Action
                 </span>
                 <p className="leading-relaxed font-medium">
@@ -578,16 +575,16 @@ export const DomainSelection: React.FC = () => {
             </div>
 
             {/* Modal Actions */}
-            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <span className="text-slate-500 font-mono text-[11px]">
-                To explore live interactive scoring, launch the Transportation demo.
+            <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <span className="text-slate-500 text-xs">
+                Transportation is PREVENT's active live demo domain.
               </span>
 
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setSelectedSpec(null)}
-                  className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors font-medium w-full sm:w-auto cursor-pointer"
+                  className="px-3 py-1.5 rounded border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors font-medium w-full sm:w-auto cursor-pointer"
                 >
                   Close
                 </button>
@@ -598,10 +595,9 @@ export const DomainSelection: React.FC = () => {
                     setSelectedSpec(null);
                     navigate('/app/transportation');
                   }}
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center justify-center gap-1.5 w-full sm:w-auto transition-colors shadow-xs cursor-pointer"
+                  className="px-3.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white font-medium flex items-center justify-center gap-1.5 w-full sm:w-auto transition-colors shadow-xs cursor-pointer"
                 >
-                  <span>Launch Live Demo</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <span>Enter Dashboard →</span>
                 </button>
               </div>
             </div>
