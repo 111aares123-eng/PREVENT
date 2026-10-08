@@ -1,5 +1,4 @@
 import React from 'react';
-import { FileText } from 'lucide-react';
 
 interface ExplanationCardProps {
   narrative: string;
@@ -7,22 +6,17 @@ interface ExplanationCardProps {
 
 export const ExplanationCard: React.FC<ExplanationCardProps> = ({ narrative }) => {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="p-1.5 rounded-lg bg-orange-950/60 border border-orange-800/50 text-orange-400">
-          <FileText className="w-4 h-4" />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-            WHY PREVENT FLAGGED THIS ASSET
-          </h3>
-          <p className="text-xs text-slate-400">
-            Synthesized algorithmic justification for safety decision support
-          </p>
-        </div>
+    <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-3">
+      <div className="border-b border-slate-200 pb-2">
+        <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-900">
+          ASSESSMENT NARRATIVE
+        </h3>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Deterministic audit explanation of calculated score
+        </p>
       </div>
 
-      <div className="p-4 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-200 text-xs leading-relaxed font-sans">
+      <div className="text-xs text-slate-700 leading-relaxed font-sans pt-1">
         <p className="whitespace-pre-line">{narrative}</p>
       </div>
     </div>

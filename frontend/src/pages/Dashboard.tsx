@@ -6,7 +6,7 @@ import { FleetKpiCards } from '../components/dashboard/FleetKpiCards';
 import { RiskDistributionChart } from '../components/dashboard/RiskDistributionChart';
 import { AssetsTable } from '../components/dashboard/AssetsTable';
 import { AddSafetyReportModal } from '../components/ingestion/AddSafetyReportModal';
-import { AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
   const [overview, setOverview] = useState<FleetOverviewResponse | null>(null);
@@ -38,26 +38,27 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans">
       <Header
         onRefresh={() => fetchFleetData(true)}
         isRefreshing={isRefreshing}
         onAddReport={() => setIsReportModalOpen(true)}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
         {/* Error State */}
         {error && (
-          <div className="rounded-xl border border-red-800 bg-red-950/40 p-5 flex items-start gap-4">
-            <AlertCircle className="w-5 h-5 text-red-400 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="text-sm font-bold text-red-200 uppercase tracking-wide">
-                Connection Failure
+          <div className="rounded-md border border-rose-200 bg-rose-50 p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5" />
+            <div className="flex-1 text-xs">
+              <h3 className="font-bold text-rose-900 uppercase tracking-wide">
+                Intelligence Service Unavailable
               </h3>
-              <p className="text-xs text-red-300 mt-1">{error}</p>
+              <p className="text-rose-700 mt-1">{error}</p>
               <button
+                type="button"
                 onClick={() => fetchFleetData()}
-                className="mt-3 inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded bg-red-900/60 hover:bg-red-800 border border-red-700 text-white transition-colors"
+                className="mt-3 inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-800 transition-colors"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 Retry Connection
@@ -66,97 +67,86 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Loading Skeleton */}
+        {/* Loading State */}
         {isLoading && !overview && (
           <div className="space-y-6 animate-pulse">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-28 rounded-xl bg-slate-900/80 border border-slate-800" />
-              ))}
-            </div>
-            <div className="h-44 rounded-xl bg-slate-900/80 border border-slate-800" />
-            <div className="h-80 rounded-xl bg-slate-900/80 border border-slate-800" />
+            <div className="h-10 w-48 bg-slate-200 rounded" />
+            <div className="h-16 w-full bg-slate-200 rounded-lg" />
+            <div className="h-64 w-full bg-slate-200 rounded-lg" />
           </div>
         )}
 
         {/* Main Content */}
         {overview && (
           <>
-            {/* Mission Statement Bar */}
-            <div className="rounded-xl border border-slate-800/80 bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-slate-950 p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Page Header: Title + Status */}
+            <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 pb-2 border-b border-slate-200">
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-orange-400">
-                    Active Surveillance Mode
-                  </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-ping" />
-                </div>
-                <h2 className="text-base font-extrabold text-white mt-0.5">
-                  Proactive Multi-Source Early Warning Intelligence
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Correlating maintenance records, inspections, complaints, driver logs, and near-misses across time.
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                  Fleet Safety Intelligence
+                </h1>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Multi-source early warning surveillance across maintenance, inspections, telematics, and operator reports
                 </p>
               </div>
 
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => setIsReportModalOpen(true)}
-                  className="inline-flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white shadow-md shadow-orange-950/60 transition-all cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-orange-200" />
-                  <span>Add Safety Report</span>
-                </button>
-
-                <div className="text-right border-l border-slate-800 pl-4 hidden sm:block">
-                  <span className="text-[10px] uppercase font-mono text-slate-500 block">
-                    Last Evaluated
-                  </span>
-                  <span className="text-xs font-mono text-slate-300">
-                    {new Date(overview.evaluated_at).toLocaleTimeString('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    })}
-                  </span>
+              <div className="flex items-center gap-4 text-xs font-mono text-slate-500">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span>Monitoring {overview.total_assets} assets</span>
                 </div>
+                <span className="text-slate-300">|</span>
+                <span>
+                  Evaluated {new Date(overview.evaluated_at).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
               </div>
             </div>
 
-            {/* Top Grid: KPI Cards + Risk Profile Chart */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-8">
-                <FleetKpiCards overview={overview} />
+            {/* Compact KPI Strip */}
+            <FleetKpiCards overview={overview} />
+
+            {/* Fleet Risk Section */}
+            <section className="space-y-3">
+              <div className="border-b border-slate-200 pb-1.5">
+                <h2 className="text-xs font-bold font-mono uppercase tracking-wider text-slate-900">
+                  Fleet Risk Profile
+                </h2>
               </div>
-              <div className="lg:col-span-4">
+              <div className="bg-white p-4 rounded-lg border border-slate-200">
                 <RiskDistributionChart distribution={overview.risk_distribution} />
               </div>
-            </div>
+            </section>
 
-            {/* Priority Assets Requiring Immediate Attention */}
+            {/* Assets Requiring Immediate Attention */}
             {overview.assets_requiring_attention.length > 0 && (
-              <AssetsTable
-                assets={overview.assets_requiring_attention}
-                title="PRIORITY ASSETS REQUIRING ATTENTION"
-                subtitle="Assets with confirmed escalating cross-source signals requiring human safety review"
-                highlightAttention={true}
-              />
+              <section className="space-y-3">
+                <AssetsTable
+                  assets={overview.assets_requiring_attention}
+                  title="Assets Requiring Attention"
+                  subtitle="Units with converging warning signals or escalating safety patterns"
+                  highlightAttention={true}
+                />
+              </section>
             )}
 
-            {/* Complete Fleet Monitored Roster */}
-            <AssetsTable
-              assets={overview.assets}
-              title="ALL MONITORED FLEET ASSETS"
-              subtitle="Comprehensive operational status, risk scoring, and evidence confidence across all fleet units"
-            />
+            {/* Full Fleet Roster */}
+            <section id="fleet-roster" className="space-y-3 pt-2">
+              <AssetsTable
+                assets={overview.assets}
+                title="All Monitored Fleet Units"
+                subtitle="Baseline operational status, deterministic risk rating, and primary subsystem"
+              />
+            </section>
           </>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-850 py-4 mt-auto text-center text-xs text-slate-500 font-mono">
-        PREVENT Decision-Support Platform • Enterprise Safety Intelligence • Not a predictive maintenance system
+      <footer className="border-t border-slate-200 py-6 mt-auto text-center text-xs text-slate-400 font-mono">
+        PREVENT Decision-Support Platform • Deterministic Multi-Source Early Warning Intelligence
       </footer>
 
       {/* AI Safety Report Ingestion Modal */}
@@ -164,7 +154,7 @@ export const Dashboard: React.FC = () => {
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         onEventIngested={() => fetchFleetData(true)}
-        availableAssetIds={overview?.assets.map((a) => a.asset_id) || []}
+        availableAssetIds={overview ? overview.assets.map((a) => a.asset_id) : []}
       />
     </div>
   );

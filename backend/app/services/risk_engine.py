@@ -620,3 +620,54 @@ class RiskEngine:
             explanation_of_change=explanation,
             simulated_assessment=simulated_assessment
         )
+
+    def calculate_risk_history(
+        self,
+        asset: Asset,
+        events: Sequence[Event]
+    ) -> Dict[str, Any]:
+        """
+        Derives chronological risk-history points by replaying the asset's
+        event timeline through the deterministic risk engine.
+        Each point represents the evaluated risk state immediately following that event.
+        """
+        if not events:
+            return {
+                "asset_id": asset.asset_id,
+                "total_points": 0,
+                "points": [],
+                "trend": "STABLE",
+                "current_risk_score": 0.0,
+                "current_risk_level": "LOW"
+            }
+
+        # Sort events chronologically ascending
+        sorted_events = sorted(events, key=lambda e: self._normalize_dt(e.timestamp))
+
+        points = []
+        for i, ev in enumerate(sorted_events, start=1):
+            sub_events = sorted_events[:i]
+            # Evaluate using the event's timestamp as the anchor time
+            step_eval = self.evaluate_asset(asset, sub_events, anchor_time=ev.timestamp)
+            points.append({
+                "timestamp": self._normalize_dt(ev.timestamp),
+                "event_id": str(ev.id),
+                "event_type": ev.event_type,
+                "subsystem": ev.subsystem,
+                "severity": ev.severity,
+                "description": ev.description,
+                "risk_score": step_eval.score,
+                "risk_level": step_eval.risk_level
+            })
+
+        latest_eval = self.evaluate_asset(asset, sorted_events)
+
+        return {
+            "asset_id": asset.asset_id,
+            "total_points": len(points),
+            "points": points,
+            "trend": latest_eval.trend,
+            "current_risk_score": latest_eval.score,
+            "current_risk_level": latest_eval.risk_level
+        }
+

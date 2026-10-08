@@ -1,12 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import {
-  GitFork,
   Layers,
   Zap,
   Activity,
   Info,
-  Network,
-  LayoutGrid,
   ShieldAlert,
   ArrowRight,
   Clock,
@@ -14,9 +11,7 @@ import {
   MessageSquare,
   ClipboardCheck,
   Radio,
-  FileText,
-  RotateCcw,
-  Sparkles
+  FileText
 } from 'lucide-react';
 import type { EvidenceGraphData, EvidenceGraphNode, EvidenceGraphEdge } from '../../types/api';
 
@@ -24,6 +19,8 @@ interface EvidenceGraphViewProps {
   evidenceGraph: EvidenceGraphData;
   riskScore?: number;
   riskLevel?: string;
+  highlightedEventIds?: string[];
+  onSelectEventId?: (eventId: string) => void;
 }
 
 interface NodeLayout {
@@ -40,15 +37,15 @@ interface NodeLayout {
 function getEventRoleIcon(role?: string) {
   switch (role?.toLowerCase()) {
     case 'technician':
-      return <Wrench className="w-3.5 h-3.5 text-blue-400" />;
+      return <Wrench className="w-3.5 h-3.5 text-slate-600" />;
     case 'passenger':
-      return <MessageSquare className="w-3.5 h-3.5 text-amber-400" />;
+      return <MessageSquare className="w-3.5 h-3.5 text-amber-600" />;
     case 'inspector':
-      return <ClipboardCheck className="w-3.5 h-3.5 text-emerald-400" />;
+      return <ClipboardCheck className="w-3.5 h-3.5 text-slate-700" />;
     case 'driver':
-      return <Radio className="w-3.5 h-3.5 text-cyan-400" />;
+      return <Radio className="w-3.5 h-3.5 text-slate-700" />;
     case 'safety_officer':
-      return <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />;
+      return <ShieldAlert className="w-3.5 h-3.5 text-red-600" />;
     default:
       return <FileText className="w-3.5 h-3.5 text-slate-400" />;
   }
@@ -58,12 +55,12 @@ function getSeverityBadge(sev?: number) {
   if (!sev) return null;
   const color =
     sev >= 5
-      ? 'bg-rose-950/80 text-rose-300 border-rose-700/60'
+      ? 'bg-red-50 text-red-700 border-red-200'
       : sev >= 4
-      ? 'bg-orange-950/80 text-orange-300 border-orange-700/60'
+      ? 'bg-amber-50 text-amber-700 border-amber-200'
       : sev >= 3
-      ? 'bg-amber-950/80 text-amber-300 border-amber-700/60'
-      : 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60';
+      ? 'bg-amber-50/50 text-amber-800 border-amber-200'
+      : 'bg-slate-50 text-slate-700 border-slate-200';
   return (
     <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${color}`}>
       Sev {sev}
@@ -74,7 +71,9 @@ function getSeverityBadge(sev?: number) {
 export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
   evidenceGraph,
   riskScore,
-  riskLevel
+  riskLevel,
+  highlightedEventIds = [],
+  onSelectEventId
 }) => {
   const [selectedNode, setSelectedNode] = useState<EvidenceGraphNode | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -261,80 +260,66 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
   }, [selectedNode, evidenceGraph]);
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg">
-      {/* Header section with renamed title & preserved counts */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 mb-4 gap-3">
+    <section className="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
+      {/* Editorial Header */}
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between pb-3 border-b border-slate-200 gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <GitFork className="w-4 h-4 text-orange-400" />
-            <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-              EVIDENCE RELATIONSHIP MAP
-            </h3>
-            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-orange-950/70 text-orange-300 border border-orange-800/60 font-semibold">
-              Topology View
-            </span>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Cross-source signal convergence proving independent reports link to the same risk pattern
+          <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-900">
+            EVIDENCE RELATIONSHIP MAP
+          </h2>
+          <p className="text-xs font-mono text-slate-500 mt-0.5">
+            {eventNodes.length} SIGNALS · {subsystemNodes.length} SUBSYSTEM · {factorNodes.length} RISK FACTORS
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* View mode toggle */}
-          <div className="flex items-center p-0.5 bg-slate-950 border border-slate-800 rounded-lg text-xs">
+        <div className="flex items-center gap-2">
+          {/* Subtle View mode toggle */}
+          <div className="flex items-center gap-1 text-xs font-mono">
             <button
+              type="button"
               onClick={() => setViewMode('map')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all ${
+              className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
                 viewMode === 'map'
-                  ? 'bg-orange-500/20 text-orange-300 font-semibold border border-orange-500/30'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-slate-900 text-white font-semibold'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Network className="w-3.5 h-3.5" />
-              <span>Graph Map</span>
+              Graph View
             </button>
             <button
+              type="button"
               onClick={() => setViewMode('matrix')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all ${
+              className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
                 viewMode === 'matrix'
-                  ? 'bg-orange-500/20 text-orange-300 font-semibold border border-orange-500/30'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-slate-900 text-white font-semibold'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Matrix</span>
+              Matrix View
             </button>
           </div>
-
-          {/* Preserved entity & relationship count badge */}
-          <span className="text-xs font-mono text-slate-400 px-2.5 py-1 rounded-md bg-slate-950 border border-slate-800 whitespace-nowrap">
-            {evidenceGraph.nodes.length} entities • {evidenceGraph.edges.length} relationships
-          </span>
         </div>
       </div>
 
       {/* Main content based on viewMode */}
       {viewMode === 'map' ? (
         <div className="space-y-3">
-          {/* Subtle canvas interactive helper */}
-          <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-orange-400/80" />
-              <span>Hover over any node to highlight evidence pathways • Click to inspect entity details</span>
-            </span>
+          {/* Minimal helper line */}
+          <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+            <span>Hover node to trace relationships · Click to inspect metadata</span>
             {selectedNode && (
               <button
+                type="button"
                 onClick={() => setSelectedNode(null)}
-                className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-orange-300 underline font-mono"
+                className="text-slate-500 hover:text-slate-900 underline font-mono cursor-pointer"
               >
-                <RotateCcw className="w-3 h-3" />
                 Reset Selection
               </button>
             )}
           </div>
 
-          {/* Scrollable Graph Canvas container */}
-          <div className="overflow-x-auto overflow-y-hidden rounded-xl border border-slate-800/90 bg-slate-950/90 p-4 shadow-inner">
+          {/* Canvas container */}
+          <div className="overflow-x-auto overflow-y-hidden rounded-lg border border-slate-200 bg-slate-50/70 p-4">
             <div
               className="relative mx-auto"
               style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px` }}
@@ -390,7 +375,7 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                     markerHeight="6"
                     orient="auto-start-reverse"
                   >
-                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#f43f5e" />
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#e11d48" />
                   </marker>
                   <marker
                     id="arrow-active"
@@ -401,7 +386,7 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                     markerHeight="7"
                     orient="auto-start-reverse"
                   >
-                    <path d="M 0 0.5 L 10 5 L 0 9.5 z" fill="#fb923c" />
+                    <path d="M 0 0.5 L 10 5 L 0 9.5 z" fill="#ea580c" />
                   </marker>
 
                   {/* Dot grid pattern for background */}
@@ -411,7 +396,7 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                     height="24"
                     patternUnits="userSpaceOnUse"
                   >
-                    <circle cx="2" cy="2" r="0.75" fill="#334155" opacity="0.25" />
+                    <circle cx="2" cy="2" r="0.75" fill="#cbd5e1" opacity="0.6" />
                   </pattern>
                 </defs>
 
@@ -437,11 +422,11 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                       key={`convergence-${factorNode.id}`}
                       d={pathD}
                       fill="none"
-                      stroke={isHighlighted ? '#fb923c' : '#ea580c'}
+                      stroke={isHighlighted ? '#ea580c' : '#94a3b8'}
                       strokeWidth={isHighlighted ? 2 : 1.25}
                       strokeDasharray="4 3"
-                      strokeOpacity={isHighlighted ? 0.9 : 0.3}
-                      className="transition-all duration-300"
+                      strokeOpacity={isHighlighted ? 0.9 : 0.4}
+                      className="transition-all duration-200"
                     />
                   );
                 })}
@@ -463,16 +448,16 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                       edge.target !== selectedNode.id);
 
                   let pathD = '';
-                  let strokeColor = '#64748b';
-                  let strokeWidth = 1.5;
+                  let strokeColor = '#94a3b8';
+                  let strokeWidth = 1.25;
                   let strokeDash = 'none';
                   let markerEnd = '';
 
                   if (edge.relation === 'has_subsystem_focus') {
                     // Vertical link: Asset -> Subsystem
                     pathD = `M ${source.x} ${source.top + source.height} L ${target.x} ${target.top}`;
-                    strokeColor = isHighlighted ? '#fb923c' : '#06b6d4';
-                    strokeWidth = isHighlighted ? 2.5 : 1.75;
+                    strokeColor = isHighlighted ? '#ea580c' : '#0284c7';
+                    strokeWidth = isHighlighted ? 2 : 1.5;
                     markerEnd = isHighlighted ? 'url(#arrow-active)' : 'url(#arrow-subsystem)';
                   } else if (edge.relation === 'correlates_signal') {
                     // Tree branching curve: Subsystem -> Event
@@ -480,8 +465,8 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                     pathD = `M ${source.x} ${source.top + source.height} C ${source.x} ${midY}, ${
                       target.x
                     } ${midY}, ${target.x} ${target.top}`;
-                    strokeColor = isHighlighted ? '#fb923c' : '#38bdf8';
-                    strokeWidth = isHighlighted ? 2.5 : 1.5;
+                    strokeColor = isHighlighted ? '#ea580c' : '#0284c7';
+                    strokeWidth = isHighlighted ? 2 : 1.25;
                     markerEnd = isHighlighted ? 'url(#arrow-active)' : 'url(#arrow-correlate)';
                   } else if (edge.relation === 'temporal_sequence') {
                     // Horizontal directional sequence link: Event_i -> Event_i+1
@@ -490,8 +475,8 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                     const endX = target.left;
                     const endY = target.y;
                     pathD = `M ${startX} ${startY} L ${endX} ${endY}`;
-                    strokeColor = isHighlighted ? '#fb923c' : '#f59e0b';
-                    strokeWidth = isHighlighted ? 2.5 : 1.75;
+                    strokeColor = isHighlighted ? '#ea580c' : '#d97706';
+                    strokeWidth = isHighlighted ? 2 : 1.5;
                     strokeDash = '5 3';
                     markerEnd = isHighlighted ? 'url(#arrow-active)' : 'url(#arrow-temporal)';
                   } else if (edge.relation === 'triggers_risk_factor') {
@@ -501,25 +486,14 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                     const endX = target.x;
                     const endY = target.top;
                     pathD = `M ${startX} ${startY} C ${startX} 320, ${endX} 360, ${endX} ${endY}`;
-                    strokeColor = isHighlighted ? '#fb923c' : '#f43f5e';
-                    strokeWidth = isHighlighted ? 2.5 : 1.5;
+                    strokeColor = isHighlighted ? '#ea580c' : '#e11d48';
+                    strokeWidth = isHighlighted ? 2 : 1.25;
                     strokeDash = '6 3';
                     markerEnd = isHighlighted ? 'url(#arrow-active)' : 'url(#arrow-factor)';
                   }
 
                   return (
                     <g key={`edge-${idx}-${edge.source}-${edge.target}`}>
-                      {/* Glow filter underlay when highlighted */}
-                      {isHighlighted && (
-                        <path
-                          d={pathD}
-                          fill="none"
-                          stroke="#ea580c"
-                          strokeWidth={strokeWidth + 4}
-                          strokeOpacity={0.35}
-                          strokeLinecap="round"
-                        />
-                      )}
                       <path
                         d={pathD}
                         fill="none"
@@ -528,7 +502,7 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                         strokeDasharray={strokeDash}
                         strokeOpacity={isDimmed ? 0.15 : isHighlighted ? 1 : 0.65}
                         markerEnd={markerEnd}
-                        className="transition-all duration-300"
+                        className="transition-all duration-200"
                       />
                     </g>
                   );
@@ -541,11 +515,24 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                 const isHovered = hoveredNodeId === node.id;
                 const isNeighbor = connectedNeighborNodeIds.has(node.id);
                 const isDimmed = hoveredNodeId && !isHovered && !isNeighbor;
+                const isHighlightedSignal =
+                  highlightedEventIds.length > 0 &&
+                  (highlightedEventIds.includes(node.id) ||
+                    (node.metadata?.event_id && highlightedEventIds.includes(node.metadata.event_id)) ||
+                    highlightedEventIds.includes(node.id.replace('event-', '')));
 
                 return (
                   <div
                     key={node.id}
-                    onClick={() => setSelectedNode(node)}
+                    onClick={() => {
+                      setSelectedNode(node);
+                      if (onSelectEventId) {
+                        const evId =
+                          node.metadata?.event_id ||
+                          (node.type === 'event' ? node.id.replace('event-', '') : null);
+                        if (evId) onSelectEventId(evId);
+                      }
+                    }}
                     onMouseEnter={() => setHoveredNodeId(node.id)}
                     onMouseLeave={() => setHoveredNodeId(null)}
                     style={{
@@ -555,16 +542,18 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                       width: `${width}px`,
                       height: `${height}px`
                     }}
-                    className={`rounded-xl border cursor-pointer transition-all duration-200 select-none flex flex-col justify-between p-2.5 ${
+                    className={`rounded-lg border cursor-pointer transition-all duration-150 select-none flex flex-col justify-between p-2.5 ${
                       isDimmed
-                        ? 'opacity-35 scale-[0.98]'
+                        ? 'opacity-30 scale-[0.98]'
                         : isSelected
-                        ? 'border-orange-500 bg-orange-950/50 ring-2 ring-orange-500/70 shadow-[0_0_20px_rgba(249,115,22,0.35)] scale-[1.02] z-30'
+                        ? 'border-orange-600 bg-orange-50/40 ring-1 ring-orange-600 shadow-sm z-30'
+                        : isHighlightedSignal
+                        ? 'border-orange-500 bg-orange-50/40 ring-1 ring-orange-500 shadow-sm z-30'
                         : isHovered
-                        ? 'border-orange-400 bg-slate-900 shadow-lg scale-[1.03] z-20'
+                        ? 'border-orange-500 bg-white shadow-md z-20'
                         : isNeighbor
-                        ? 'border-slate-500 bg-slate-900/90 shadow-md z-10'
-                        : 'border-slate-800 bg-slate-950/95 hover:border-slate-700'
+                        ? 'border-slate-300 bg-slate-50/80 shadow-xs z-10'
+                        : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
                     }`}
                   >
                     {/* Render node content specifically by tier */}
@@ -572,19 +561,19 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                       // TIER 0: Asset Node
                       <div className="h-full flex flex-col justify-between">
                         <div className="flex items-center justify-between gap-1">
-                          <span className="text-[9px] font-mono uppercase tracking-wider text-orange-400 font-bold flex items-center gap-1">
-                            <Activity className="w-3 h-3 text-orange-400" />
+                          <span className="text-[9px] font-mono uppercase tracking-wider text-orange-600 font-bold flex items-center gap-1">
+                            <Activity className="w-3 h-3 text-orange-600" />
                             Target Asset
                           </span>
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-950/70 text-emerald-300 border border-emerald-800/60 uppercase">
+                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 uppercase">
                             {node.metadata?.status || 'Active'}
                           </span>
                         </div>
                         <div className="flex items-baseline justify-between mt-0.5">
-                          <span className="font-bold text-white text-xs tracking-tight">
+                          <span className="font-bold text-slate-900 text-xs tracking-tight">
                             {node.label}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
+                          <span className="text-[10px] text-slate-500 font-mono">
                             {node.metadata?.depot_location || 'North Depot'}
                           </span>
                         </div>
@@ -595,19 +584,19 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                       // TIER 1: Subsystem Node
                       <div className="h-full flex flex-col justify-between">
                         <div className="flex items-center justify-between gap-1">
-                          <span className="text-[9px] font-mono uppercase tracking-wider text-cyan-400 font-bold flex items-center gap-1">
-                            <Layers className="w-3 h-3 text-cyan-400" />
+                          <span className="text-[9px] font-mono uppercase tracking-wider text-sky-700 font-bold flex items-center gap-1">
+                            <Layers className="w-3 h-3 text-sky-700" />
                             Common Subsystem
                           </span>
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cyan-950/70 text-cyan-300 border border-cyan-800/60">
+                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-sky-50 text-sky-700 border border-sky-200">
                             Focus Subsystem
                           </span>
                         </div>
                         <div className="flex items-baseline justify-between mt-0.5">
-                          <span className="font-bold text-white text-xs tracking-tight">
+                          <span className="font-bold text-slate-900 text-xs tracking-tight">
                             {node.label}
                           </span>
-                          <span className="text-[10px] text-cyan-300 font-mono font-semibold">
+                          <span className="text-[10px] text-slate-500 font-mono font-medium">
                             {node.metadata?.event_count || 5} signals converged
                           </span>
                         </div>
@@ -620,17 +609,17 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                         <div className="flex items-center justify-between gap-1">
                           <div className="flex items-center gap-1">
                             {getEventRoleIcon(node.metadata?.reporter_role)}
-                            <span className="text-[9px] font-mono uppercase text-slate-400 truncate max-w-[85px]">
+                            <span className="text-[9px] font-mono uppercase text-slate-500 truncate max-w-[85px]">
                               {node.metadata?.reporter_role || 'reporter'}
                             </span>
                           </div>
                           {getSeverityBadge(node.metadata?.severity)}
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-100 text-[11px] truncate">
+                          <div className="font-semibold text-slate-900 text-[11px] truncate">
                             {node.label.split('(')[0].trim()}
                           </div>
-                          <p className="text-[10px] text-slate-400 truncate mt-0.5 font-mono">
+                          <p className="text-[10px] text-slate-500 truncate mt-0.5 font-mono">
                             {node.metadata?.description || node.metadata?.source}
                           </p>
                         </div>
@@ -641,15 +630,15 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                       // TIER 3: Risk Factor Node
                       <div className="h-full flex flex-col justify-between">
                         <div className="flex items-center justify-between gap-1">
-                          <span className="text-[9px] font-mono uppercase tracking-wider text-rose-400 font-bold flex items-center gap-1">
-                            <Zap className="w-3 h-3 text-rose-400" />
+                          <span className="text-[9px] font-mono uppercase tracking-wider text-rose-700 font-bold flex items-center gap-1">
+                            <Zap className="w-3 h-3 text-rose-600" />
                             Factor
                           </span>
-                          <span className="text-[10px] font-mono text-orange-400 font-bold bg-orange-950/70 px-1.5 py-0.2 rounded border border-orange-800/60">
+                          <span className="text-[10px] font-mono text-orange-700 font-bold bg-orange-50 px-1.5 py-0.2 rounded border border-orange-200">
                             +{Number(node.metadata?.points || 0).toFixed(1)}
                           </span>
                         </div>
-                        <div className="font-semibold text-slate-200 text-[11px] leading-tight mt-1">
+                        <div className="font-semibold text-slate-900 text-[11px] leading-tight mt-1">
                           {node.label}
                         </div>
                       </div>
@@ -667,33 +656,29 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                   width: '320px',
                   height: '54px'
                 }}
-                className={`rounded-xl border flex items-center justify-between px-4 py-2 select-none shadow-xl transition-all ${
-                  displayRiskScore >= 80
-                    ? 'border-red-500/70 bg-gradient-to-r from-red-950/80 via-slate-900 to-red-950/80 ring-1 ring-red-500/50'
-                    : 'border-orange-500/70 bg-slate-900'
-                }`}
+                className="rounded-lg border border-slate-200 bg-white flex items-center justify-between px-4 py-2 select-none shadow-xs"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-red-900/60 text-red-200 border border-red-700/60">
-                    <ShieldAlert className="w-4 h-4 text-red-400 animate-pulse" />
+                  <div className="p-1.5 rounded bg-red-50 text-red-600 border border-red-200">
+                    <ShieldAlert className="w-4 h-4 text-red-600" />
                   </div>
                   <div>
                     <div className="text-[9px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
                       Compounded Risk Synthesis
                     </div>
-                    <div className="text-xs font-bold text-white flex items-center gap-2">
+                    <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
                       <span>Risk {displayRiskScore}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-red-900/60 text-red-300 font-semibold">
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-red-50 text-red-700 border border-red-200 font-semibold">
                         {displayRiskLevel}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-mono text-orange-300 font-bold block">
+                  <span className="text-[10px] font-mono text-orange-700 font-bold block">
                     {factorNodes.length} Factors
                   </span>
-                  <span className="text-[9px] text-slate-400 font-mono block">
+                  <span className="text-[9px] text-slate-500 font-mono block">
                     Correlated Pattern
                   </span>
                 </div>
@@ -702,28 +687,28 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
           </div>
 
           {/* Interactive Topology Legend */}
-          <div className="flex flex-wrap items-center justify-between gap-3 px-2 py-2 rounded-lg bg-slate-950/60 border border-slate-800 text-[11px] font-mono text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-mono text-slate-600">
             <div className="flex flex-wrap items-center gap-4">
-              <span className="text-slate-500 uppercase font-semibold text-[10px]">Legend:</span>
+              <span className="text-slate-400 uppercase font-semibold text-[10px]">Legend:</span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#06b6d4]" />
-                <span className="text-slate-300">Correlated Signal</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
+                <span className="text-slate-700">Correlated Signal</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-4 h-0.5 border-t-2 border-dashed border-amber-400" />
-                <span className="text-slate-300">Temporal Sequence</span>
+                <span className="w-4 h-0.5 border-t-2 border-dashed border-amber-500" />
+                <span className="text-slate-700">Temporal Sequence</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-4 h-0.5 border-t-2 border-dashed border-rose-400" />
-                <span className="text-slate-300">Triggers Factor</span>
+                <span className="w-4 h-0.5 border-t-2 border-dashed border-rose-500" />
+                <span className="text-slate-700">Triggers Factor</span>
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-4 h-0.5 border-t-2 border-dashed border-orange-500" />
-                <span className="text-slate-300">Risk Rollup</span>
+                <span className="text-slate-700">Risk Rollup</span>
               </span>
             </div>
-            <div className="text-[10px] text-slate-400">
-              Total Points: <strong className="text-orange-400">+{totalFactorPoints.toFixed(1)} pts</strong>
+            <div className="text-[10px] text-slate-500">
+              Total Points: <strong className="text-orange-700 font-semibold">+{totalFactorPoints.toFixed(1)} pts</strong>
             </div>
           </div>
         </div>
@@ -732,7 +717,7 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 py-2">
           {/* Column 1: Monitored Asset */}
           <div className="space-y-3">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-1">
+            <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-500 px-1">
               1. Target Asset
             </div>
             {assetNodes.map((node) => (
@@ -741,17 +726,17 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                 onClick={() => setSelectedNode(node)}
                 className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
                   selectedNode?.id === node.id
-                    ? 'border-orange-500 bg-orange-950/30 ring-1 ring-orange-500'
-                    : 'border-slate-700 bg-slate-950/80 hover:border-slate-600'
+                    ? 'border-orange-600 bg-orange-50/40 ring-1 ring-orange-600'
+                    : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="p-1 rounded bg-slate-800 text-slate-300">
-                    <Activity className="w-3.5 h-3.5 text-orange-400" />
+                  <div className="p-1 rounded bg-slate-100 text-slate-700">
+                    <Activity className="w-3.5 h-3.5 text-orange-600" />
                   </div>
-                  <span className="font-bold text-white text-xs">{node.label}</span>
+                  <span className="font-bold text-slate-900 text-xs">{node.label}</span>
                 </div>
-                <p className="text-[11px] text-slate-400 font-mono">
+                <p className="text-[11px] text-slate-500 font-mono">
                   {node.metadata?.depot_location || 'North Depot'}
                 </p>
               </div>
@@ -760,7 +745,7 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
 
           {/* Column 2: Correlated Subsystem */}
           <div className="space-y-3">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-1">
+            <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-500 px-1">
               2. Common Subsystem
             </div>
             {subsystemNodes.map((node) => (
@@ -769,17 +754,17 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                 onClick={() => setSelectedNode(node)}
                 className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
                   selectedNode?.id === node.id
-                    ? 'border-orange-500 bg-orange-950/30 ring-1 ring-orange-500'
-                    : 'border-slate-700 bg-slate-950/80 hover:border-slate-600'
+                    ? 'border-orange-600 bg-orange-50/40 ring-1 ring-orange-600'
+                    : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="p-1 rounded bg-slate-800 text-slate-300">
-                    <Layers className="w-3.5 h-3.5 text-blue-400" />
+                  <div className="p-1 rounded bg-slate-100 text-slate-700">
+                    <Layers className="w-3.5 h-3.5 text-sky-700" />
                   </div>
-                  <span className="font-bold text-white text-xs">{node.label}</span>
+                  <span className="font-bold text-slate-900 text-xs">{node.label}</span>
                 </div>
-                <p className="text-[11px] text-slate-400 font-mono">
+                <p className="text-[11px] text-slate-500 font-mono">
                   {node.metadata?.event_count || 0} signals converged
                 </p>
               </div>
@@ -788,7 +773,7 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
 
           {/* Column 3: Multi-Source Signals */}
           <div className="space-y-2.5">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-1">
+            <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-500 px-1">
               3. Independent Signals ({eventNodes.length})
             </div>
             <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
@@ -798,19 +783,19 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                   onClick={() => setSelectedNode(node)}
                   className={`p-2.5 rounded-lg border cursor-pointer transition-all text-xs ${
                     selectedNode?.id === node.id
-                      ? 'border-orange-500 bg-orange-950/30 ring-1 ring-orange-500'
-                      : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                      ? 'border-orange-600 bg-orange-50/40 ring-1 ring-orange-600'
+                      : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="font-semibold text-slate-200 text-xs truncate">
+                    <span className="font-semibold text-slate-900 text-xs truncate">
                       {node.label}
                     </span>
-                    <span className="text-[10px] font-mono text-orange-400 font-bold px-1.5 py-0.2 rounded bg-orange-950/60 border border-orange-900">
+                    <span className="text-[10px] font-mono text-slate-700 font-bold px-1.5 py-0.2 rounded bg-slate-100 border border-slate-200">
                       Sev {node.metadata?.severity}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 line-clamp-1">
+                  <p className="text-[11px] text-slate-500 line-clamp-1">
                     {node.metadata?.description || node.metadata?.source}
                   </p>
                 </div>
@@ -820,7 +805,7 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
 
           {/* Column 4: Triggered Risk Factors */}
           <div className="space-y-2.5">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-1">
+            <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-500 px-1">
               4. Activated Factors ({factorNodes.length})
             </div>
             <div className="space-y-2">
@@ -830,16 +815,16 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                   onClick={() => setSelectedNode(node)}
                   className={`p-2.5 rounded-lg border cursor-pointer transition-all text-xs ${
                     selectedNode?.id === node.id
-                      ? 'border-orange-500 bg-orange-950/30 ring-1 ring-orange-500'
-                      : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                      ? 'border-orange-600 bg-orange-50/40 ring-1 ring-orange-600'
+                      : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1">
                     <div className="flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-orange-400" />
-                      <span className="font-semibold text-slate-200">{node.label}</span>
+                      <Zap className="w-3.5 h-3.5 text-rose-600" />
+                      <span className="font-semibold text-slate-900">{node.label}</span>
                     </div>
-                    <span className="font-mono text-orange-400 font-bold">
+                    <span className="font-mono text-orange-700 font-bold">
                       +{Number(node.metadata?.points || 0).toFixed(1)}
                     </span>
                   </div>
@@ -852,29 +837,29 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
 
       {/* Selected Node Details Drawer */}
       {selectedNode && (
-        <div className="mt-4 p-4 rounded-xl bg-slate-950 border border-slate-700/80 shadow-2xl transition-all text-xs">
-          <div className="flex items-start justify-between gap-4 border-b border-slate-800 pb-3 mb-3">
+        <div className="mt-4 p-4 rounded-lg bg-slate-50 border border-slate-200 shadow-xs transition-all text-xs">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-3 mb-3">
             <div className="flex items-center gap-2.5">
-              <div className="p-1.5 rounded-lg bg-orange-500/20 text-orange-400 border border-orange-500/30">
+              <div className="p-1.5 rounded bg-white text-orange-600 border border-slate-200 shadow-xs">
                 <Info className="w-4 h-4" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-white text-sm uppercase">
+                  <span className="font-bold text-slate-900 text-sm uppercase">
                     {selectedNode.label}
                   </span>
-                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-orange-300 border border-slate-700 font-semibold">
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 font-semibold">
                     Type: {selectedNode.type}
                   </span>
                 </div>
-                <span className="text-[11px] font-mono text-slate-400">
+                <span className="text-[11px] font-mono text-slate-500">
                   Node ID: {selectedNode.id}
                 </span>
               </div>
             </div>
             <button
               onClick={() => setSelectedNode(null)}
-              className="text-xs text-slate-400 hover:text-white px-2.5 py-1 rounded bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors"
+              className="text-xs text-slate-600 hover:text-slate-900 px-2.5 py-1 rounded bg-white border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               Close
             </button>
@@ -882,8 +867,8 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
 
           {/* Node Metadata & Description */}
           {selectedNode.metadata?.description && (
-            <div className="mb-3 p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300 leading-relaxed">
-              <span className="text-slate-400 font-semibold block mb-0.5 font-mono text-[10px] uppercase">
+            <div className="mb-3 p-2.5 rounded bg-white border border-slate-200 text-slate-700 leading-relaxed">
+              <span className="text-slate-500 font-semibold block mb-0.5 font-mono text-[10px] uppercase">
                 Incident Summary:
               </span>
               {selectedNode.metadata.description}
@@ -891,32 +876,32 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
           )}
 
           {/* Metadata Attribute Badges */}
-          <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-slate-400 mb-3">
+          <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-slate-600 mb-3">
             {selectedNode.metadata?.source && (
-              <span className="p-1 px-2 rounded bg-slate-900 border border-slate-800">
-                Source: <strong className="text-slate-200">{selectedNode.metadata.source}</strong>
+              <span className="p-1 px-2 rounded bg-white border border-slate-200">
+                Source: <strong className="text-slate-900">{selectedNode.metadata.source}</strong>
               </span>
             )}
             {selectedNode.metadata?.reporter_role && (
-              <span className="p-1 px-2 rounded bg-slate-900 border border-slate-800">
-                Role: <strong className="text-slate-200">{selectedNode.metadata.reporter_role}</strong>
+              <span className="p-1 px-2 rounded bg-white border border-slate-200">
+                Role: <strong className="text-slate-900">{selectedNode.metadata.reporter_role}</strong>
               </span>
             )}
             {selectedNode.metadata?.severity && (
-              <span className="p-1 px-2 rounded bg-slate-900 border border-slate-800">
-                Severity: <strong className="text-orange-400">Level {selectedNode.metadata.severity}</strong>
+              <span className="p-1 px-2 rounded bg-white border border-slate-200">
+                Severity: <strong className="text-orange-700">Level {selectedNode.metadata.severity}</strong>
               </span>
             )}
             {selectedNode.metadata?.points !== undefined && (
-              <span className="p-1 px-2 rounded bg-slate-900 border border-slate-800">
-                Factor Contribution: <strong className="text-orange-400">+{Number(selectedNode.metadata.points).toFixed(1)} pts</strong>
+              <span className="p-1 px-2 rounded bg-white border border-slate-200">
+                Factor Contribution: <strong className="text-orange-700">+{Number(selectedNode.metadata.points).toFixed(1)} pts</strong>
               </span>
             )}
             {selectedNode.metadata?.timestamp && (
-              <span className="p-1 px-2 rounded bg-slate-900 border border-slate-800 flex items-center gap-1">
+              <span className="p-1 px-2 rounded bg-white border border-slate-200 flex items-center gap-1">
                 <Clock className="w-3 h-3 text-slate-400" />
                 <span>Timestamp: </span>
-                <strong className="text-slate-200">
+                <strong className="text-slate-900">
                   {selectedNode.metadata.timestamp.slice(0, 19).replace('T', ' ')}
                 </strong>
               </span>
@@ -924,10 +909,10 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
           </div>
 
           {/* Connected Graph Relationships */}
-          <div className="border-t border-slate-850 pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] font-mono">
-            <div className="flex items-center gap-2 text-slate-400">
-              <span className="text-slate-500 uppercase text-[10px]">Relationships:</span>
-              <span className="text-slate-300">
+          <div className="border-t border-slate-200 pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] font-mono">
+            <div className="flex items-center gap-2 text-slate-500">
+              <span className="text-slate-400 uppercase text-[10px]">Relationships:</span>
+              <span className="text-slate-700">
                 {selectedNodeRelationships.incoming.length} incoming, {selectedNodeRelationships.outgoing.length} outgoing
               </span>
             </div>
@@ -936,9 +921,9 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
                 <button
                   key={`out-${edge.target}`}
                   onClick={() => setSelectedNode(node)}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-850 text-slate-300 hover:text-orange-300 border border-slate-800"
+                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 cursor-pointer"
                 >
-                  <ArrowRight className="w-3 h-3 text-orange-400" />
+                  <ArrowRight className="w-3 h-3 text-orange-600" />
                   <span className="truncate max-w-[120px]">{node.label}</span>
                 </button>
               ))}
@@ -946,6 +931,6 @@ export const EvidenceGraphView: React.FC<EvidenceGraphViewProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };

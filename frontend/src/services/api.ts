@@ -10,7 +10,9 @@ import type {
   SimulateSignalResponse,
   EventExtractResponse,
   EventCreateRequest,
-  EventIngestionResponse
+  EventIngestionResponse,
+  RiskHistoryResponse,
+  WhyNowResponse
 } from '../types/api';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -67,6 +69,12 @@ export const api = {
 
   getAssetTimeline: (assetId: string) =>
     request<AssetTimelineResponse>(`/api/v1/assets/${encodeURIComponent(assetId)}/timeline`),
+
+  getAssetRiskHistory: (assetId: string) =>
+    request<RiskHistoryResponse>(`/api/v1/assets/${encodeURIComponent(assetId)}/risk-history`),
+
+  getAssetWhyNow: (assetId: string) =>
+    request<WhyNowResponse>(`/api/v1/assets/${encodeURIComponent(assetId)}/why-now`),
 
   simulateSignal: (payload: SimulateSignalRequest) =>
     request<SimulateSignalResponse>('/api/v1/simulation/simulate-signal', {

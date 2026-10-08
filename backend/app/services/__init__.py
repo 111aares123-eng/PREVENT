@@ -13,6 +13,7 @@ from backend.app.services.risk_engine import (
     RiskAssessmentOutput,
     WhatIfSimulationOutput
 )
+from backend.app.services.why_now_analyzer import WhyNowAnalyzer
 
 __all__ = [
     "TemporalAnalyzer",
@@ -25,5 +26,6 @@ __all__ = [
     "RiskEngine",
     "SubsystemScoreBreakdown",
     "RiskAssessmentOutput",
-    "WhatIfSimulationOutput"
+    "WhatIfSimulationOutput",
+    "WhyNowAnalyzer"
 ]

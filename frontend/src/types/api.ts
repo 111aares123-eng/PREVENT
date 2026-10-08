@@ -87,6 +87,52 @@ export interface SubsystemDetail {
   is_severity_escalating: boolean;
 }
 
+export interface WhyNowSignalItem {
+  label: string;
+  value: string;
+  severity: 'info' | 'warning' | 'critical' | 'positive';
+  evidence_event_ids: string[];
+}
+
+export interface FactorContributionItem {
+  factor_key?: string;
+  label: string;
+  points: number;
+}
+
+export interface WhyNowResponse {
+  asset_id: string;
+  headline: string;
+  summary: string;
+  signals: WhyNowSignalItem[];
+  factor_contributions: FactorContributionItem[];
+  current_risk_score: number;
+  risk_level: RiskLevel;
+  primary_subsystem: string;
+  total_signals_count: number;
+  distinct_sources_count: number;
+}
+
+export interface RiskHistoryPoint {
+  timestamp: string;
+  event_id: string;
+  event_type: string;
+  subsystem?: string | null;
+  severity: number;
+  description: string;
+  risk_score: number;
+  risk_level?: RiskLevel | null;
+}
+
+export interface RiskHistoryResponse {
+  asset_id: string;
+  total_points: number;
+  points: RiskHistoryPoint[];
+  trend: TrendDirection;
+  current_risk_score: number;
+  current_risk_level: RiskLevel;
+}
+
 export interface AssetDetailResponse {
   asset: AssetInfo;
   risk_score: number;
@@ -115,6 +161,8 @@ export interface AssetDetailResponse {
   explanation_narrative: string;
   evidence_graph: EvidenceGraphData;
   computed_at: string;
+  why_now?: WhyNowResponse;
+  risk_history?: RiskHistoryResponse;
 }
 
 export interface TimelineEventItem {

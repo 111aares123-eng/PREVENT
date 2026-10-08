@@ -293,15 +293,15 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
   const getSeverityBadgeClass = (sev: number) => {
     switch (sev) {
       case 5:
-        return 'bg-red-500/20 text-red-300 border-red-500/50';
+        return 'bg-red-50 text-red-700 border-red-200';
       case 4:
-        return 'bg-orange-500/20 text-orange-300 border-orange-500/50';
+        return 'bg-amber-50 text-amber-700 border-amber-200';
       case 3:
-        return 'bg-amber-500/20 text-amber-300 border-amber-500/50';
+        return 'bg-amber-50/50 text-amber-800 border-amber-200';
       case 2:
-        return 'bg-blue-500/20 text-blue-300 border-blue-500/50';
+        return 'bg-slate-50 text-slate-700 border-slate-200';
       default:
-        return 'bg-slate-500/20 text-slate-300 border-slate-500/50';
+        return 'bg-slate-50 text-slate-500 border-slate-200';
     }
   };
 
@@ -310,45 +310,42 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center p-4 sm:p-6"
     >
-      <div className="relative w-full max-w-2xl rounded-2xl bg-gradient-to-b from-slate-900 to-[#0c121e] border border-slate-800 shadow-2xl flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-2xl rounded-lg bg-white border border-slate-200 shadow-xl flex flex-col max-h-[92vh]">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400">
-              <Sparkles className="w-5 h-5 text-orange-400" />
-            </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 id="modal-title" className="text-base font-bold text-white tracking-tight">
+                <h2 id="modal-title" className="text-xs font-mono font-bold uppercase tracking-wider text-slate-900">
                   ADD SAFETY REPORT
                 </h2>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 uppercase">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 uppercase">
                   AI Ingestion
                 </span>
                 {fallbackNotice ? (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/70 text-amber-300 border border-amber-700/60 uppercase flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3 text-amber-400" />
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 uppercase flex items-center gap-1 font-semibold">
+                    <AlertTriangle className="w-3 h-3 text-amber-600" />
                     <span>Fallback: {activeProvider}</span>
                   </span>
                 ) : (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-orange-950/60 text-orange-400 border border-orange-800/40 uppercase">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 uppercase">
                     Provider: {activeProvider}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Connecting human safety reports into PREVENT's explainable intelligence timeline.
+              <p className="text-xs text-slate-500 mt-0.5 font-sans">
+                Connecting field reports into PREVENT's explainable intelligence timeline.
               </p>
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-slate-400 hover:text-slate-700 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
             title="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -358,23 +355,23 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
           {step === 'input' && (
             <div className="space-y-4">
               {/* Target Fleet Asset Selector */}
-              <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 space-y-2">
+              <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="target-asset-select" className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-orange-400" />
+                  <label htmlFor="target-asset-select" className="text-xs font-semibold uppercase tracking-wider text-slate-700 flex items-center gap-2 font-mono">
+                    <span className="w-2 h-2 rounded-full bg-orange-600" />
                     Target Fleet Asset
                   </label>
                   {initialAssetId ? (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-orange-950/60 text-orange-400 border border-orange-800/40 uppercase">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200 uppercase font-semibold">
                       Asset Dossier: {initialAssetId}
                     </span>
                   ) : (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
                       Required
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500 font-sans">
                   Select the vehicle asset to link with this safety report. PREVENT enforces this asset ID authoritatively during extraction.
                 </p>
                 <div className="flex items-center gap-2">
@@ -385,7 +382,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                       setSelectedAssetId(e.target.value.toUpperCase());
                       setExtractionError(null);
                     }}
-                    className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white font-mono font-bold focus:border-orange-500 focus:outline-none"
+                    className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 font-mono font-bold focus:border-slate-900 focus:outline-none"
                   >
                     <option value="">-- Choose Target Fleet Asset --</option>
                     {(availableAssetIds.length > 0
@@ -401,10 +398,10 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
               </div>
 
               <div>
-                <label htmlFor="safety-report-textarea" className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                <label htmlFor="safety-report-textarea" className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1 font-mono">
                   Describe Warning, Complaint, Inspection Finding, or Near-Miss
                 </label>
-                <p className="text-xs text-slate-400 mb-2.5">
+                <p className="text-xs text-slate-500 mb-2 font-sans">
                   Paste verbatim driver shift log, passenger complaint, or maintenance observation.
                   PREVENT will extract normalized fields for verification.
                 </p>
@@ -414,9 +411,9 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                   onChange={(e) => setReportText(e.target.value)}
                   placeholder="Example: Driver reported that BUS-142 required significantly more distance to stop during heavy rain and the brake pedal felt abnormal."
                   rows={4}
-                  className="w-full rounded-xl bg-slate-950 border border-slate-700/80 p-3.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-colors font-sans"
+                  className="w-full rounded border border-slate-200 p-3 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 transition-colors font-sans"
                 />
-                <div className="flex justify-between items-center mt-1 text-[11px] text-slate-500 font-mono">
+                <div className="flex justify-between items-center mt-1 text-[11px] text-slate-400 font-mono">
                   <span>Minimum 5 characters</span>
                   <span>{reportText.length} characters</span>
                 </div>
@@ -424,8 +421,8 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
               {/* Sample Report Chips */}
               <div>
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-                  Or load a sample scenario:
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-2 font-mono">
+                  Sample scenarios:
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {SAMPLE_REPORTS.map((sample, idx) => (
@@ -433,7 +430,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                       key={idx}
                       type="button"
                       onClick={() => handleSelectSample(sample.text)}
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700/60 transition-colors text-left"
+                      className="text-xs font-medium px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors text-left cursor-pointer"
                     >
                       {sample.label}
                     </button>
@@ -443,11 +440,11 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
               {/* Extraction Error */}
               {extractionError && (
-                <div className="rounded-xl border border-red-800 bg-red-950/40 p-4 flex items-start gap-3">
-                  <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-                  <div className="flex-1 text-xs text-red-200">
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3.5 flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                  <div className="flex-1 text-xs text-red-700">
                     <p className="font-semibold uppercase tracking-wide">Extraction Issue</p>
-                    <p className="mt-0.5 text-red-300">{extractionError}</p>
+                    <p className="mt-0.5">{extractionError}</p>
                     <button
                       type="button"
                       onClick={() => {
@@ -456,7 +453,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                         setDescription(reportText);
                         setAssetId(availableAssetIds[0] || 'BUS-142');
                       }}
-                      className="mt-2 text-xs font-semibold text-orange-400 hover:text-orange-300 underline"
+                      className="mt-2 text-xs font-semibold text-red-800 underline cursor-pointer"
                     >
                       Continue to manual entry instead →
                     </button>
@@ -465,10 +462,10 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
               )}
 
               {/* Architecture Safeguard Note */}
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3.5 flex items-start gap-3 text-xs text-slate-400">
-                <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 flex items-start gap-2.5 text-xs text-slate-600 font-sans">
+                <ShieldCheck className="w-4 h-4 text-slate-600 mt-0.5 shrink-0" />
                 <div>
-                  <span className="font-semibold text-slate-200">Architectural Principle: </span>
+                  <span className="font-semibold text-slate-800">Operational Integrity: </span>
                   The AI model only extracts structured fields. Risk scoring and evidence correlation
                   are performed strictly by PREVENT's explainable deterministic engine after human confirmation.
                 </div>
@@ -483,22 +480,22 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
               {fallbackNotice && (
                 <div
                   id="fallback-notice-banner"
-                  className="rounded-xl border border-amber-500/50 bg-amber-950/40 p-3.5 flex items-start gap-3 text-xs text-amber-200 shadow-lg shadow-amber-950/20"
+                  className="rounded-lg border border-amber-300 bg-amber-50 p-3.5 flex items-start gap-3 text-xs text-amber-900"
                 >
-                  <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                  <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold uppercase tracking-wider text-amber-300 text-xs">
+                      <span className="font-bold uppercase tracking-wider text-amber-900 text-xs font-mono">
                         Fallback Extraction Activated
                       </span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200 border border-amber-700/50">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-semibold">
                         PROVIDER: {activeProvider.toUpperCase()}
                       </span>
                     </div>
-                    <p className="font-semibold text-amber-200">
+                    <p className="font-semibold text-amber-900">
                       {fallbackNotice}
                     </p>
-                    <p className="text-[11px] text-amber-300/80">
+                    <p className="text-[11px] text-amber-800">
                       {activeProvider === 'gemini'
                         ? 'Extracted via Gemini secondary provider. Please review all fields before confirming.'
                         : "Due to temporary hosted capacity limits, this report was extracted using PREVENT's local heuristic parser. Review the fields below before persisting."}
@@ -508,20 +505,20 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
               )}
 
               {/* Header Banner */}
-              <div className="flex items-center justify-between rounded-xl bg-slate-950/70 border border-slate-800 p-3.5">
+              <div className="flex items-center justify-between rounded-lg bg-slate-50 border border-slate-200 p-3">
                 <div className="flex items-center gap-2.5">
                   {validationErrors.length > 0 ? (
-                    <AlertTriangle className="w-4 h-4 text-amber-400" />
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
                   ) : (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <CheckCircle2 className="w-4 h-4 text-slate-700" />
                   )}
                   <div>
-                    <span className="text-xs font-bold text-white block">
+                    <span className="text-xs font-bold text-slate-900 block font-mono">
                       {validationErrors.length > 0
                         ? 'VERIFICATION REQUIRED'
                         : 'EXTRACTED EVENT PREVIEW'}
                     </span>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[11px] text-slate-500 font-sans">
                       {validationErrors.length > 0
                         ? 'Please verify highlighted fields before ingesting.'
                         : 'Review structured event extracted from report text.'}
@@ -532,7 +529,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsEditing(!isEditing)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   {isEditing ? 'Card View' : 'Edit Fields'}
@@ -541,11 +538,11 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
               {/* Validation Errors Notice */}
               {validationErrors.length > 0 && (
-                <div className="rounded-xl border border-amber-800/80 bg-amber-950/30 p-3.5 text-xs text-amber-200">
-                  <p className="font-semibold uppercase tracking-wider text-amber-300">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                  <p className="font-semibold uppercase tracking-wider text-amber-900 font-mono">
                     Validation Attention Items:
                   </p>
-                  <ul className="mt-1 list-disc list-inside space-y-0.5 text-amber-300/90">
+                  <ul className="mt-1 list-disc list-inside space-y-0.5 text-amber-800">
                     {validationErrors.map((err, i) => (
                       <li key={i}>{err}</li>
                     ))}
@@ -555,47 +552,47 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
               {/* Ingestion Error */}
               {ingestionError && (
-                <div className="rounded-xl border border-red-800 bg-red-950/40 p-3.5 flex items-start gap-2.5 text-xs text-red-200">
-                  <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 flex items-start gap-2.5 text-xs text-red-700">
+                  <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
                   <div>
                     <p className="font-semibold">Persistence Error</p>
-                    <p className="mt-0.5 text-red-300">{ingestionError}</p>
+                    <p className="mt-0.5">{ingestionError}</p>
                   </div>
                 </div>
               )}
 
               {/* Card View Mode */}
               {!isEditing && (
-                <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-4 space-y-4">
+                <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                    <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
+                    <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
                       <span className="text-[10px] uppercase font-mono text-slate-500 block">
                         Target Asset
                       </span>
-                      <span className="font-bold text-white text-sm mt-0.5 block">
+                      <span className="font-bold text-slate-900 text-sm mt-0.5 block font-mono">
                         {assetId || 'Unknown'}
                       </span>
                     </div>
 
-                    <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
+                    <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
                       <span className="text-[10px] uppercase font-mono text-slate-500 block">
                         Event Type
                       </span>
-                      <span className="font-semibold text-slate-200 uppercase tracking-wide text-xs mt-0.5 block">
+                      <span className="font-semibold text-slate-800 uppercase tracking-wide text-xs mt-0.5 block">
                         {eventType.replace('_', ' ')}
                       </span>
                     </div>
 
-                    <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
+                    <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
                       <span className="text-[10px] uppercase font-mono text-slate-500 block">
                         Subsystem
                       </span>
-                      <span className="font-semibold text-slate-200 uppercase tracking-wide text-xs mt-0.5 block">
+                      <span className="font-semibold text-slate-800 uppercase tracking-wide text-xs mt-0.5 block">
                         {subsystem}
                       </span>
                     </div>
 
-                    <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
+                    <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
                       <span className="text-[10px] uppercase font-mono text-slate-500 block">
                         Severity
                       </span>
@@ -610,42 +607,42 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+                    <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
                       <span className="text-[10px] uppercase font-mono text-slate-500 block">
                         Source
                       </span>
-                      <span className="text-slate-300 font-medium">{source}</span>
+                      <span className="text-slate-800 font-medium">{source}</span>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+                    <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
                       <span className="text-[10px] uppercase font-mono text-slate-500 block">
                         Reporter Role
                       </span>
-                      <span className="text-slate-300 font-medium capitalize">{reporterRole}</span>
+                      <span className="text-slate-800 font-medium capitalize">{reporterRole}</span>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+                    <div className="p-2.5 rounded bg-slate-50 border border-slate-200 flex items-center justify-between">
                       <div>
                         <span className="text-[10px] uppercase font-mono text-slate-500 block">
                           Event Time
                         </span>
-                        <span className="text-slate-200 font-medium font-mono text-[11px]">
+                        <span className="text-slate-800 font-medium font-mono text-[11px]">
                           {eventTimestamp ? new Date(eventTimestamp).toLocaleString() : 'Current Time'}
                         </span>
                       </div>
-                      <Clock className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                      <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800">
+                  <div className="p-3 rounded bg-slate-50 border border-slate-200">
                     <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
                       Description Narrative
                     </span>
-                    <p className="text-xs text-slate-200 font-sans leading-relaxed">{description}</p>
+                    <p className="text-xs text-slate-800 font-sans leading-relaxed">{description}</p>
                   </div>
 
                   {metadataWeather && (
                     <div className="flex items-center gap-2 text-xs">
                       <span className="text-slate-500 text-[11px] font-mono">METADATA:</span>
-                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px]">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 text-[11px]">
                         weather: {metadataWeather}
                       </span>
                     </div>
@@ -655,10 +652,10 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
               {/* Form Editing Mode */}
               {isEditing && (
-                <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-4 space-y-3.5 text-xs">
+                <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3.5 text-xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                      <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1 font-mono">
                         Asset ID
                       </label>
                       <input
@@ -666,7 +663,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                         value={assetId}
                         onChange={(e) => setAssetId(e.target.value.toUpperCase())}
                         placeholder="e.g. BUS-142"
-                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 font-mono focus:border-orange-500 focus:outline-none"
+                        className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 font-mono focus:border-slate-900 focus:outline-none"
                       />
                       {availableAssetIds.length > 0 && (
                         <div className="mt-1 flex flex-wrap gap-1">
@@ -675,7 +672,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                               key={id}
                               type="button"
                               onClick={() => setAssetId(id)}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white"
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 hover:text-slate-900"
                             >
                               {id}
                             </button>
@@ -685,13 +682,13 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                      <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1 font-mono">
                         Severity (1 - 5)
                       </label>
                       <select
                         value={severity}
                         onChange={(e) => setSeverity(Number(e.target.value))}
-                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 focus:border-orange-500 focus:outline-none"
+                        className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 focus:border-slate-900 focus:outline-none"
                       >
                         <option value={1}>1 - Negligible</option>
                         <option value={2}>2 - Minor</option>
@@ -704,13 +701,13 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                      <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1 font-mono">
                         Subsystem
                       </label>
                       <select
                         value={subsystem}
                         onChange={(e) => setSubsystem(e.target.value)}
-                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 focus:border-orange-500 focus:outline-none"
+                        className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 focus:border-slate-900 focus:outline-none"
                       >
                         <option value="braking">braking</option>
                         <option value="steering">steering</option>
@@ -724,13 +721,13 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                      <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1 font-mono">
                         Event Type
                       </label>
                       <select
                         value={eventType}
                         onChange={(e) => setEventType(e.target.value)}
-                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 focus:border-orange-500 focus:outline-none"
+                        className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 focus:border-slate-900 focus:outline-none"
                       >
                         <option value="operational_report">operational_report (driver log)</option>
                         <option value="maintenance">maintenance (workshop repair)</option>
@@ -745,7 +742,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                      <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1 font-mono">
                         Source
                       </label>
                       <input
@@ -753,18 +750,18 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                         value={source}
                         onChange={(e) => setSource(e.target.value)}
                         placeholder="e.g. Driver Shift Incident Pad"
-                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 focus:border-orange-500 focus:outline-none"
+                        className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 focus:border-slate-900 focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                      <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1 font-mono">
                         Reporter Role
                       </label>
                       <select
                         value={reporterRole}
                         onChange={(e) => setReporterRole(e.target.value)}
-                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 focus:border-orange-500 focus:outline-none"
+                        className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 focus:border-slate-900 focus:outline-none"
                       >
                         <option value="driver">driver</option>
                         <option value="technician">technician</option>
@@ -776,28 +773,28 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                    <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1 font-mono">
                       Narrative Description
                     </label>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={2}
-                      className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 focus:border-orange-500 focus:outline-none"
+                      className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 focus:border-slate-900 focus:outline-none"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11px] font-semibold uppercase text-slate-400 flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-orange-400" />
+                        <label className="text-[11px] font-semibold uppercase text-slate-600 flex items-center gap-1.5 font-mono">
+                          <Clock className="w-3.5 h-3.5 text-slate-500" />
                           Event Time (Local)
                         </label>
                         <button
                           type="button"
                           onClick={() => setEventTimestamp(getNowLocalDateTime())}
-                          className="text-[10px] text-orange-400 hover:text-orange-300 underline"
+                          className="text-[10px] text-slate-600 hover:text-slate-900 underline cursor-pointer"
                         >
                           Set to Now
                         </button>
@@ -806,15 +803,15 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                         type="datetime-local"
                         value={eventTimestamp}
                         onChange={(e) => setEventTimestamp(e.target.value)}
-                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 font-mono focus:border-orange-500 focus:outline-none"
+                        className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 font-mono focus:border-slate-900 focus:outline-none"
                       />
-                      <span className="text-[10px] text-slate-500 mt-0.5 block">
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">
                         Editable for back-dated or historical reports. Evaluated in UTC.
                       </span>
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                      <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1 font-mono">
                         Location (Optional)
                       </label>
                       <input
@@ -822,13 +819,13 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                         value={location}
                         onChange={(e) => setLocation(e.target.value)}
                         placeholder="e.g. Route 4 - 5th Ave"
-                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 focus:border-orange-500 focus:outline-none"
+                        className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 focus:border-slate-900 focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                    <label className="block text-[11px] font-semibold uppercase text-slate-600 mb-1 font-mono">
                       Weather Condition (Metadata)
                     </label>
                     <input
@@ -836,7 +833,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                       value={metadataWeather}
                       onChange={(e) => setMetadataWeather(e.target.value)}
                       placeholder="e.g. heavy rain, snow, wet"
-                      className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 focus:border-orange-500 focus:outline-none"
+                      className="w-full rounded border border-slate-200 px-3 py-1.5 text-slate-900 focus:border-slate-900 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -846,107 +843,105 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
 
           {/* STEP 3: EVENT CONFIRMED & PERSISTED */}
           {step === 'confirmed' && ingestionResult && (
-            <div className="space-y-5 animate-in fade-in duration-300">
+            <div className="space-y-4">
               {/* Success Badge */}
-              <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/30 p-4.5 flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-700" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-emerald-200 uppercase tracking-wide">
+                  <h3 className="text-xs font-bold text-emerald-900 uppercase tracking-wide font-mono">
                     Safety Event Confirmed & Added to Timeline
                   </h3>
-                  <p className="text-xs text-emerald-300/80 mt-0.5">
-                    Target asset <span className="font-mono font-bold text-white">{ingestionResult.asset_id}</span> has
+                  <p className="text-xs text-emerald-800 mt-0.5">
+                    Target asset <span className="font-mono font-bold">{ingestionResult.asset_id}</span> has
                     been re-evaluated through PREVENT's deterministic risk engine.
                   </p>
                 </div>
               </div>
 
               {/* Before vs After Risk Comparison Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center">
-                  <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono">
+                <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                  <span className="text-[10px] uppercase font-sans text-slate-500 font-semibold block mb-1">
                     Previous Risk
                   </span>
-                  <span className="text-2xl font-black text-slate-300 font-mono">
+                  <span className="text-2xl font-bold text-slate-900 font-mono">
                     {ingestionResult.previous_risk_score.toFixed(1)}
                   </span>
-                  <span className="text-[10px] block text-slate-400 mt-1 uppercase">
+                  <span className="text-[10px] block text-slate-500 mt-1 uppercase font-sans">
                     Level: {ingestionResult.previous_risk_level}
                   </span>
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center relative overflow-hidden">
-                  <span className="text-[10px] uppercase font-mono text-orange-400 font-semibold block mb-1">
+                <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                  <span className="text-[10px] uppercase font-sans text-slate-500 font-semibold block mb-1">
                     Updated Risk Score
                   </span>
-                  <span className="text-3xl font-black text-white font-mono">
+                  <span className="text-2xl font-bold text-slate-900 font-mono">
                     {ingestionResult.updated_risk_score.toFixed(1)}
                   </span>
-                  <span className="text-[10px] block text-slate-300 font-semibold mt-1 uppercase">
+                  <span className="text-[10px] block text-slate-500 font-sans mt-1 uppercase">
                     Level: {ingestionResult.updated_risk_level}
                   </span>
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center">
-                  <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
+                <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                  <span className="text-[10px] uppercase font-sans text-slate-500 font-semibold block mb-1">
                     Risk Shift Delta
                   </span>
                   <span
-                    className={`text-2xl font-black font-mono flex items-center justify-center gap-1 ${
+                    className={`text-2xl font-bold font-mono flex items-center justify-center gap-1 ${
                       ingestionResult.risk_score_delta > 0
-                        ? 'text-red-400'
+                        ? 'text-rose-600'
                         : ingestionResult.risk_score_delta < 0
-                        ? 'text-emerald-400'
-                        : 'text-slate-300'
+                        ? 'text-emerald-700'
+                        : 'text-slate-700'
                     }`}
                   >
-                    {ingestionResult.risk_score_delta > 0 && <TrendingUp className="w-5 h-5 text-red-400" />}
+                    {ingestionResult.risk_score_delta > 0 && <TrendingUp className="w-4 h-4 text-rose-600" />}
                     {ingestionResult.risk_score_delta > 0 ? '+' : ''}
                     {ingestionResult.risk_score_delta.toFixed(1)}
                   </span>
-                  <span className="text-[10px] block text-slate-400 mt-1">
-                    Confidence: {ingestionResult.updated_confidence.toFixed(0)}% (
-                    {ingestionResult.confidence_delta >= 0 ? '+' : ''}
-                    {ingestionResult.confidence_delta.toFixed(0)}%)
+                  <span className="text-[10px] block text-slate-500 font-sans mt-1">
+                    Confidence: {ingestionResult.updated_confidence.toFixed(0)}%
                   </span>
                 </div>
               </div>
 
               {/* Why Did the Risk Change? Factor Breakdown */}
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-orange-400" />
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                  <Sliders className="w-3.5 h-3.5 text-slate-500" />
+                  <h4 className="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
                     Why Did The Risk Change?
                   </h4>
                 </div>
 
-                <ul className="space-y-1.5 text-xs text-slate-300 font-sans">
+                <ul className="space-y-1 text-xs text-slate-700 font-sans">
                   {ingestionResult.why_risk_changed.map((reason, idx) => (
                     <li key={idx} className="flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-1.5 shrink-0" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0" />
                       <span>{reason}</span>
                     </li>
                   ))}
                 </ul>
 
                 {/* Mathematical Factor Waterfall Display */}
-                <div className="pt-2 border-t border-slate-800/80 mt-2">
-                  <span className="text-[10px] uppercase font-mono text-slate-500 block mb-2">
+                <div className="pt-2 border-t border-slate-200 mt-2">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 font-semibold block mb-2">
                     Deterministic Factor Waterfall (Current Points):
                   </span>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] font-mono">
                     {Object.entries(ingestionResult.factor_breakdown).map(([key, val]) => (
                       <div
                         key={key}
-                        className="p-2 rounded bg-slate-900 border border-slate-800 flex justify-between items-center"
+                        className="p-2 rounded bg-slate-50 border border-slate-200 flex justify-between items-center"
                       >
-                        <span className="text-slate-400 text-[10px] truncate mr-1">
+                        <span className="text-slate-500 text-[10px] truncate mr-1">
                           {key.replace('_points', '').replace('_', ' ')}
                         </span>
-                        <span className="font-bold text-slate-200">
+                        <span className="font-bold text-slate-900">
                           {typeof val === 'number' ? val.toFixed(1) : val}
                         </span>
                       </div>
@@ -959,13 +954,13 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="px-6 py-4 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between rounded-b-2xl">
+        <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between rounded-b-lg">
           {step === 'input' && (
             <>
               <button
                 type="button"
                 onClick={handleClose}
-                className="text-xs text-slate-400 hover:text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors"
+                className="text-xs text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -973,16 +968,16 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                 type="button"
                 disabled={isExtracting || !reportText.trim() || !selectedAssetId.trim()}
                 onClick={handleExtract}
-                className="inline-flex items-center gap-2 text-xs font-bold px-4.5 py-2.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-950 transition-all disabled:opacity-50 disabled:pointer-events-none"
+                className="inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded bg-slate-900 hover:bg-slate-800 text-white transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
               >
                 {isExtracting ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
                     Extracting Event...
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" />
+                    <Sparkles className="w-3.5 h-3.5" />
                     Extract Structured Event
                   </>
                 )}
@@ -996,20 +991,16 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                 type="button"
                 onClick={() => setStep('input')}
                 disabled={isIngesting}
-                className="text-xs text-slate-400 hover:text-white px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors"
+                className="text-xs text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 ← Back to Report
               </button>
               <div className="flex items-center gap-3">
-                <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-400 font-mono bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800">
-                  <Clock className="w-3.5 h-3.5 text-orange-400" />
-                  <span>Target Time: <span className="text-slate-200">{eventTimestamp ? new Date(eventTimestamp).toLocaleString() : 'Now'}</span></span>
-                </div>
                 <button
                   type="button"
                   onClick={handleClose}
                   disabled={isIngesting}
-                  className="text-xs text-slate-400 hover:text-white px-3.5 py-2 rounded-lg hover:bg-slate-800 transition-colors"
+                  className="text-xs text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1017,16 +1008,16 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                   type="button"
                   disabled={isIngesting || !assetId.trim()}
                   onClick={handleConfirmIngest}
-                  className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950 transition-all disabled:opacity-50"
+                  className="inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded bg-slate-900 hover:bg-slate-800 text-white transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {isIngesting ? (
                     <>
-                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
                       Ingesting & Recalculating...
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-4 h-4" />
+                      <CheckCircle2 className="w-3.5 h-3.5" />
                       Confirm & Add Event
                     </>
                   )}
@@ -1040,7 +1031,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Add Another Report
@@ -1053,7 +1044,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                       handleClose();
                       navigate(`/assets/${ingestionResult.asset_id}`);
                     }}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     View Asset Dossier
@@ -1062,7 +1053,7 @@ export const AddSafetyReportModal: React.FC<AddSafetyReportModalProps> = ({
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="text-xs font-bold px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white transition-colors"
+                  className="text-xs font-semibold px-4 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white transition-colors cursor-pointer"
                 >
                   Done
                 </button>

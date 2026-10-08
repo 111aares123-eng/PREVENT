@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShieldAlert, RefreshCw, ArrowLeft } from 'lucide-react';
+import { RefreshCw, Plus, ArrowLeft } from 'lucide-react';
 
 interface HeaderProps {
   onRefresh?: () => void;
@@ -13,68 +13,87 @@ export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing = false,
   const isDetailPage = location.pathname.startsWith('/assets/');
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur border-b border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
-        <div className="flex items-center justify-between">
-          {/* Logo and Brand */}
-          <div className="flex items-center gap-4">
-            <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-lg bg-orange-600/10 border border-orange-500/30 flex items-center justify-center text-orange-400 group-hover:border-orange-500/60 transition-colors">
-                <ShieldAlert className="w-6 h-6 text-orange-400" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold tracking-tight text-white">PREVENT</span>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-orange-400 px-1.5 py-0.5 rounded bg-orange-950/60 border border-orange-800/40">
-                    Safety Intelligence
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 font-normal">
-                  Connecting the warnings before they become incidents.
-                </p>
-              </div>
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-slate-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+        {/* Brand + Navigation */}
+        <div className="flex items-center gap-8">
+          <Link to="/" className="flex items-baseline gap-2 group">
+            <span className="text-base font-bold tracking-tight text-slate-900">
+              PREVENT
+            </span>
+            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
+              Safety Intelligence
+            </span>
+          </Link>
+
+          {/* Clean minimal navigation links */}
+          <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-500">
+            <Link
+              to="/"
+              className={`transition-colors hover:text-slate-900 ${
+                !isDetailPage ? 'text-slate-900 font-semibold' : ''
+              }`}
+            >
+              Overview
             </Link>
+            <a
+              href="#fleet-roster"
+              className="transition-colors hover:text-slate-900"
+            >
+              Assets
+            </a>
+            <button
+              type="button"
+              onClick={onAddReport}
+              className="transition-colors hover:text-slate-900 cursor-pointer"
+            >
+              Add Report
+            </button>
+          </nav>
+        </div>
+
+        {/* Right utility area */}
+        <div className="flex items-center gap-3">
+          {isDetailPage && (
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-medium px-2.5 py-1.5 rounded-md hover:bg-slate-100 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Fleet Overview</span>
+            </Link>
+          )}
+
+          {/* System status indicator */}
+          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-slate-500 pr-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span>System operational</span>
           </div>
 
-          {/* Right Action & Status Area */}
-          <div className="flex items-center gap-3">
-            {isDetailPage && (
-              <Link
-                to="/"
-                className="inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-750 border border-slate-700 transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                Fleet Overview
-              </Link>
-            )}
+          {/* Add Safety Report Button */}
+          {onAddReport && (
+            <button
+              type="button"
+              onClick={onAddReport}
+              className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white transition-colors shadow-sm cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 text-slate-300" />
+              <span>Safety Report</span>
+            </button>
+          )}
 
-            {onAddReport && (
-              <button
-                onClick={onAddReport}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-1.5 rounded-md bg-orange-600 hover:bg-orange-500 shadow-sm shadow-orange-950 transition-colors"
-              >
-                <ShieldAlert className="w-3.5 h-3.5 text-white" />
-                <span>Add Safety Report</span>
-              </button>
-            )}
-
-            <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-950/70 border border-slate-800 text-xs text-slate-300 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>LIVE FLEET MONITOR</span>
-            </div>
-
-            {onRefresh && (
-              <button
-                onClick={onRefresh}
-                disabled={isRefreshing}
-                title="Refresh fleet data"
-                className="inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-orange-400' : ''}`} />
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
-            )}
-          </div>
+          {/* Refresh Action */}
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              title="Refresh data"
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-slate-900' : ''}`} />
+            </button>
+          )}
         </div>
       </div>
     </header>
