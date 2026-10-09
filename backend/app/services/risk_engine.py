@@ -5,6 +5,8 @@ What-If simulation engine, and prescriptive recommendation generator.
 """
 from datetime import datetime, timezone
 import math
+import re
+import string
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 from pydantic import BaseModel, Field
 from backend.app.core.config import (
@@ -88,11 +90,159 @@ class RiskEngine:
         self.temporal_analyzer = TemporalAnalyzer(self.risk_weights)
         self.correlation_engine = CorrelationEngine()
 
-    def _normalize_dt(self, dt: datetime) -> datetime:
+    @staticmethod
+    def _normalize_dt(dt: datetime) -> datetime:
         """Ensure datetime is timezone-aware UTC."""
+        if dt is None:
+            return datetime.now(timezone.utc)
         if dt.tzinfo is None:
             return dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc)
+
+    @staticmethod
+    def _normalize_description(text: Optional[str]) -> str:
+        """
+        Normalizes event description for conservative duplicate detection:
+        - Lowercase
+        - Replace punctuation with whitespace
+        - Condense repeated whitespace
+        - Strip leading/trailing whitespace
+        """
+        if not text:
+            return ""
+        s = text.lower()
+        s = re.sub(r'[' + re.escape(string.punctuation) + r']', ' ', s)
+        return ' '.join(s.split())
+
+    @staticmethod
+    def _are_compatible_warning_types(
+        type1: Optional[str],
+        type2: Optional[str],
+        sev1: int = 1,
+        sev2: int = 1
+    ) -> bool:
+        """
+        Determines if two warning events have compatible types/contexts for duplicate candidacy.
+        """
+        t1 = (type1 or "").lower().strip()
+        t2 = (type2 or "").lower().strip()
+        if t1 == t2:
+            return True
+        observational = {"complaint", "operational_report", "maintenance", "violation"}
+        if (t1 == "inspection" and t2 in observational) or (t2 == "inspection" and t1 in observational):
+            return True
+        if t1 in observational and t2 in observational:
+            return True
+        critical = {"incident", "near_miss"}
+        if (t1 in critical or sev1 >= 5) and (t2 not in critical and sev2 < 5):
+            return False
+        if (t2 in critical or sev2 >= 5) and (t1 not in critical and sev1 < 5):
+            return False
+        return False
+
+    @classmethod
+    def _is_likely_duplicate(cls, ev: Event, canonical: Event) -> bool:
+        """
+        Conservative deterministic duplicate detection:
+        Matches only if:
+        1. Same asset
+        2. Same subsystem
+        3. Non-empty exact normalized description
+        4. Compatible event type and context
+        5. Within 24 hours (|t1 - t2| <= 86400 seconds)
+        6. Does not have explicit independent author metadata
+        """
+        # 1. Asset check (must match exactly)
+        if str(ev.asset_id or "").strip() != str(canonical.asset_id or "").strip():
+            return False
+
+        # 2. Subsystem check (must match exactly)
+        sub1 = (ev.subsystem or "general").strip().lower()
+        sub2 = (canonical.subsystem or "general").strip().lower()
+        if sub1 != sub2:
+            return False
+
+        # 3. Description check (must be non-empty and match exactly after normalization)
+        norm1 = cls._normalize_description(ev.description)
+        norm2 = cls._normalize_description(canonical.description)
+        if not norm1 or norm1 != norm2:
+            return False
+
+        # 4. Compatible event type/context
+        sev1 = getattr(ev, "severity", 1) or 1
+        sev2 = getattr(canonical, "severity", 1) or 1
+        if not cls._are_compatible_warning_types(ev.event_type, canonical.event_type, sev1, sev2):
+            return False
+
+        # 5. Time window check (<= 24 hours / 86400 seconds)
+        t1 = cls._normalize_dt(ev.timestamp)
+        t2 = cls._normalize_dt(canonical.timestamp)
+        delta_sec = abs((t1 - t2).total_seconds())
+        if delta_sec > 86400.0:
+            return False
+
+        # 6. Independence checks via metadata:
+        meta1 = canonical.raw_metadata or {}
+        meta2 = ev.raw_metadata or {}
+
+        # Explicit independent declaration flag in metadata
+        if (
+            meta1.get("is_independent") is True
+            or meta2.get("is_independent") is True
+            or meta1.get("independent_report") is True
+            or meta2.get("independent_report") is True
+            or meta1.get("independent_author") is True
+            or meta2.get("independent_author") is True
+        ):
+            return False
+
+        # Distinct author identifiers check
+        author_keys = ("driver_id", "reporter_id", "employee_id", "badge_number", "author_id", "user_id")
+        for k in author_keys:
+            id1 = meta1.get(k)
+            id2 = meta2.get(k)
+            if id1 is not None and id2 is not None and str(id1).strip() and str(id2).strip():
+                if str(id1).strip() != str(id2).strip():
+                    return False
+
+        return True
+
+    @classmethod
+    def _filter_effective_events(
+        cls,
+        events: Sequence[Event]
+    ) -> Tuple[List[Event], List[Event]]:
+        """
+        Partitions events into:
+        - effective_events: deduplicated canonical evidence contributing to risk scoring
+        - duplicate_events: identified duplicates whose evidence contribution is suppressed
+
+        Deterministic order: sorted by (timestamp, id).
+        Preserves all original Event objects without mutation.
+        """
+        if not events:
+            return [], []
+
+        sorted_evs = sorted(
+            events,
+            key=lambda e: (cls._normalize_dt(e.timestamp), str(e.id or ""))
+        )
+
+        effective: List[Event] = []
+        duplicates: List[Event] = []
+
+        for ev in sorted_evs:
+            is_dup = False
+            for canon in effective:
+                if cls._is_likely_duplicate(ev, canon):
+                    is_dup = True
+                    break
+            if is_dup:
+                duplicates.append(ev)
+            else:
+                effective.append(ev)
+
+        return effective, duplicates
 
     def _determine_anchor_time(
         self,
@@ -216,7 +366,7 @@ class RiskEngine:
                 temporal_analysis=empty_temporal
             )
 
-        sorted_events = sorted(events, key=lambda e: self._normalize_dt(e.timestamp))
+        sorted_events = sorted(events, key=lambda e: (self._normalize_dt(e.timestamp), str(e.id or "")))
         mitigations = [e for e in sorted_events if self._analyze_mitigation_event(e)[0]]
         warnings = [e for e in sorted_events if not self._analyze_mitigation_event(e)[0]]
 
@@ -237,10 +387,13 @@ class RiskEngine:
                 temporal_analysis=empty_temporal
             )
 
-        k_warn = len(warnings)
-        distinct_roles = sorted(list({e.reporter_role for e in warnings if e.reporter_role}))
+        # Separate effective non-duplicate evidence from duplicate submissions
+        effective_warnings, duplicate_warnings = self._filter_effective_events(warnings)
+
+        k_warn = len(effective_warnings)
+        distinct_roles = sorted(list({e.reporter_role for e in effective_warnings if e.reporter_role}))
         num_distinct_roles = len(distinct_roles)
-        max_sev = max(e.severity for e in warnings)
+        max_sev = max(e.severity for e in effective_warnings)
 
         # Scaling factor: Prevents repeated negligible (severity 1) routine maintenance tasks from overwhelming risk score
         sev_scale = 0.35 if max_sev <= 1 else 1.0
@@ -253,7 +406,7 @@ class RiskEngine:
         # Isolated severe event temporal decay (after ~12h grace period, isolated acute hazards decline smoothly)
         isolated_factor = 1.0
         if k_warn == 1 and max_sev >= 5:
-            ev_time = self._normalize_dt(warnings[0].timestamp)
+            ev_time = self._normalize_dt(effective_warnings[0].timestamp)
             delta_seconds = max(0.0, (anchor_time - ev_time).total_seconds())
             delta_days = delta_seconds / 86400.0
             grace = getattr(self.risk_weights, "isolated_decay_grace_period_days", 0.5)
@@ -267,7 +420,7 @@ class RiskEngine:
         max_cap = (getattr(self.risk_weights, "acute_max_severity_points", 35.0) * isolated_factor) if (k_warn == 1 and max_sev >= 5) else self.risk_weights.max_severity_points
 
         raw_severity_sum = 0.0
-        for ev in warnings:
+        for ev in effective_warnings:
             ev_time = self._normalize_dt(ev.timestamp)
             delta_seconds = max(0.0, (anchor_time - ev_time).total_seconds())
             delta_days = delta_seconds / 86400.0
@@ -294,17 +447,17 @@ class RiskEngine:
         cross_source_bonus_points = round(min(self.risk_weights.max_cross_source_points, cross_source_bonus_points), 2)
 
         # 4. Temporal Acceleration Heuristic
-        temporal_result = self.temporal_analyzer.analyze(warnings)
+        temporal_result = self.temporal_analyzer.analyze(effective_warnings)
         temporal_acceleration_points = round(temporal_result.temporal_acceleration_points, 2)
 
         # 5. Near-Miss / Critical Severity Anchor (Acute vs Pattern-Based)
         has_near_miss = any(
             ev.event_type in ("near_miss", "incident") or ev.severity >= 5
-            for ev in warnings
+            for ev in effective_warnings
         )
         has_actual_incident = any(
             ev.event_type == "incident" and ev.severity >= 5
-            for ev in warnings
+            for ev in effective_warnings
         )
 
         near_miss_anchor_points = 0.0
@@ -317,13 +470,13 @@ class RiskEngine:
 
         # 6. Mitigation / Corrective Action Discount
         mitigation_discount_points = 0.0
-        if mitigations and warnings:
+        if mitigations and effective_warnings:
             latest_mit = mitigations[-1]
             latest_mit_time = self._normalize_dt(latest_mit.timestamp)
             _, is_verified, _ = self._analyze_mitigation_event(latest_mit)
 
-            mitigated_warnings = [w for w in warnings if self._normalize_dt(w.timestamp) <= latest_mit_time]
-            unresolved_post_warnings = [w for w in warnings if self._normalize_dt(w.timestamp) > latest_mit_time]
+            mitigated_warnings = [w for w in effective_warnings if self._normalize_dt(w.timestamp) <= latest_mit_time]
+            unresolved_post_warnings = [w for w in effective_warnings if self._normalize_dt(w.timestamp) > latest_mit_time]
 
             if mitigated_warnings:
                 base_discount = (
@@ -385,8 +538,13 @@ class RiskEngine:
                 "total_confidence": 0.0
             }
 
-        k = len(events)
-        all_roles = {e.reporter_role for e in events if e.reporter_role}
+        effective_events, _ = self._filter_effective_events(events)
+        k_eff = len(effective_events)
+        if k_eff == 0:
+            effective_events = list(events)
+            k_eff = len(effective_events)
+
+        all_roles = {e.reporter_role for e in effective_events if e.reporter_role}
         num_roles = len(all_roles)
 
         # 1. Source Diversity Points
@@ -398,20 +556,25 @@ class RiskEngine:
         # 2. Evidence Volume Points
         volume_pts = min(
             self.confidence_weights.max_evidence_volume_points,
-            k * self.confidence_weights.points_per_event
+            k_eff * self.confidence_weights.points_per_event
         )
 
         # 3. Subsystem Focus Points
-        if primary_breakdown and k > 0:
-            primary_ratio = primary_breakdown.event_count / k
+        if primary_breakdown and k_eff > 0:
+            primary_sub = (primary_breakdown.subsystem or "general").strip().lower()
+            primary_eff_count = sum(
+                1 for e in effective_events
+                if (e.subsystem or "general").strip().lower() == primary_sub
+            )
+            primary_ratio = min(1.0, primary_eff_count / k_eff)
             subsystem_focus_pts = round(primary_ratio * self.confidence_weights.max_subsystem_focus_points, 2)
         else:
             subsystem_focus_pts = 9.0
 
         # 4. Temporal Coherence Points
-        if k >= 3 and primary_breakdown and primary_breakdown.temporal_analysis.intervals_days:
+        if k_eff >= 3 and primary_breakdown and primary_breakdown.temporal_analysis.intervals_days:
             temporal_coherence_pts = self.confidence_weights.max_temporal_coherence_points
-        elif k >= 2:
+        elif k_eff >= 2:
             temporal_coherence_pts = 10.0
         else:
             temporal_coherence_pts = 4.0
@@ -531,10 +694,17 @@ class RiskEngine:
         """
         t_eval = self._determine_anchor_time(events, anchor_time)
 
+        # Filter events belonging to target asset (if asset_id is specified)
+        target_asset_id = str(asset.asset_id or "").strip()
+        asset_events = [
+            e for e in events
+            if not e.asset_id or str(e.asset_id).strip() == target_asset_id
+        ]
+
         # Filter events within analysis window and connected hazard chains
         window_days = self.risk_weights.analysis_window_days
         all_by_sub: Dict[str, List[Event]] = {}
-        for e in events:
+        for e in asset_events:
             sub = e.subsystem or "general"
             all_by_sub.setdefault(sub, []).append(e)
 
