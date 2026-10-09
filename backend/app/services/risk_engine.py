@@ -113,47 +113,78 @@ class RiskEngine:
         """
         Determines if an event represents a mitigation / corrective action.
         Returns (is_mitigation, is_verified, reason).
-        """
-        desc = (ev.description or "").lower()
-        ev_type = (ev.event_type or "").lower()
-        metadata = ev.raw_metadata or {}
 
-        # 1. Negative indications / failure to mitigate:
+        SAFETY CORRECTNESS CONSTRAINTS:
+        1. Free-text descriptions alone must NEVER independently establish mitigation.
+           Operational reports, collision reports, driver logs, near-misses, complaints,
+           or routine maintenance tasks cannot trigger mitigation just because their narrative
+           contains words like 'repaired' or 'replace'.
+        2. Only canonical completed corrective actions ('corrective_action') and verified
+           post-repair inspections ('inspection') may qualify as mitigation.
+        3. Pending, scheduled, unresolved, or recurring-failure records do NOT qualify.
+        """
+        ev_type = (ev.event_type or "").lower().strip()
+        metadata = ev.raw_metadata or {}
+        desc = (ev.description or "").lower()
+        meta_status = str(metadata.get("status", "")).lower().strip()
+
+        # Gate: Only canonical corrective_action or inspection can establish mitigation
+        if ev_type not in ("corrective_action", "inspection"):
+            return False, False, "Standard operational event"
+
+        # 1. Negative indications / incomplete / scheduled / persisting hazard:
+        if meta_status in ("pending", "scheduled", "to_be_scheduled", "in_progress", "unresolved", "failed", "open"):
+            return False, False, "Repair attempted or scheduled, but hazard remains active / unmitigated"
+
         negations = [
             "issue persists", "still failing", "persists", "unresolved",
             "attempted but", "scheduled", "to be scheduled", "pending",
-            "inspection scheduled", "further diagnosis required"
+            "inspection scheduled", "further diagnosis required",
+            "need to be replaced", "needs to be replaced",
+            "need replacement", "needs replacement",
+            "require replacement", "requires replacement",
+            "urgent replacement", "replace urgently"
         ]
         if any(neg in desc for neg in negations):
             return False, False, "Repair attempted or scheduled, but hazard remains active / unmitigated"
 
-        # 2. Verification / Post-repair inspection passed:
+        # 2. Verification indications:
         verification_keywords = [
             "post-repair inspection passed", "inspection passed", "verification passed",
             "audit passed", "passed inspection", "verified and certified", "re-test passed",
             "post-repair audit passed", "verification test passed"
         ]
         is_verified = (
-            any(vk in desc for vk in verification_keywords)
-            or str(metadata.get("status", "")).lower() == "verified"
-            or str(metadata.get("verification", "")).lower() == "passed"
+            meta_status == "verified"
+            or str(metadata.get("verification", "")).lower().strip() == "passed"
+            or any(vk in desc for vk in verification_keywords)
         )
 
-        # 3. Completed repair / Corrective action:
-        mitigation_keywords = [
-            "brake pads replaced", "pads replaced", "replaced", "caliper overhauled",
-            "calipers replaced", "brake overhaul", "repair completed", "corrective action completed",
-            "serviced and tested", "maintenance completed", "fixed", "overhaul completed",
-            "repaired", "components replaced", "friction pads replaced", "action completed"
-        ]
-        is_mit = (
-            ev_type == "corrective_action"
-            or any(mk in desc for mk in mitigation_keywords)
-            or str(metadata.get("action", "")).lower() in ("repair", "replace", "fix")
-            or str(metadata.get("status", "")).lower() in ("completed", "resolved")
-        )
+        # 3. Handle canonical inspection:
+        # An inspection event ONLY mitigates if it is a verified post-repair inspection.
+        # Defect inspection reports remain standard operational warnings.
+        if ev_type == "inspection":
+            if is_verified:
+                return True, True, "Post-repair verification passed"
+            return False, False, "Standard operational event"
 
-        if is_mit or is_verified:
+        # 4. Handle canonical corrective_action:
+        if ev_type == "corrective_action":
+            # Explicitly establish completed repair:
+            # Requires either structured completion status OR explicit completed work narrative
+            is_completed_meta = meta_status in ("completed", "resolved", "verified", "closed")
+            completed_action_keywords = [
+                "brake pads replaced", "pads replaced", "replaced", "caliper overhauled",
+                "calipers replaced", "brake overhaul", "repair completed", "corrective action completed",
+                "serviced and tested", "maintenance completed", "fixed", "overhaul completed",
+                "repaired", "components replaced", "friction pads replaced", "action completed",
+                "installed", "fitted", "calibrated"
+            ]
+            has_completed_desc = any(ck in desc for ck in completed_action_keywords)
+
+            if not (is_completed_meta or has_completed_desc):
+                return False, False, "Corrective action record does not establish completed repair"
+
             reason = "Post-repair verification passed" if is_verified else "Corrective action / repair completed"
             return True, is_verified, reason
 

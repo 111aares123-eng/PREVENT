@@ -182,7 +182,7 @@ class WhyNowAnalyzer:
                         label="Mitigation discount applied",
                         value=f"Hazard mitigated (-{primary_bd.mitigation_discount_points:.1f} pts)",
                         severity="info",
-                        evidence_event_ids=[str(e.id) for e in sorted_events if self._is_mitigation_record(e)]
+                        evidence_event_ids=[str(e.id) for e in sorted_events if WhyNowAnalyzer._is_mitigation_record(e)]
                     )
                 )
 
